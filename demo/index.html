@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Centroid Gap CG-1</title>
 <meta name="description" content="An interactive demo of why vector search that routes by list averages misses nearest neighbors, and the one-number-per-list fix.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://tshasan.github.io/centroid-gap/">
+<meta property="og:title" content="Centroid Gap CG-1 — Search by the average, miss the answer">
+<meta property="og:description" content="Interactive demo of Lean 4 proofs on how much work k-means centroid routing can waste in IVF vector search, and the one-bias-per-list fix.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Centroid Gap CG-1 — Search by the average, miss the answer">
+<meta name="twitter:description" content="Interactive demo of Lean 4 proofs on how much work k-means centroid routing can waste in IVF vector search, and the one-bias-per-list fix.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
@@ -117,7 +124,7 @@ footer a { color: inherit; }
     <p class="lede">Vector databases split millions of vectors into lists. To answer a query they score only each list's average point, its <b>centroid</b>, and open the few lists that look closest. But a query's nearest neighbor often sits at the edge of its list, far from the average. This unit shows what that costs, and the one number per list that can fix it.</p>
     <div class="chips">
       <span class="chip">Proved in Lean 4 · 1,328 theorems</span>
-      <a class="chip" href="https://github.com/tshasan/centroid-gap/blob/main/paper/main.pdf">Paper</a>
+      <a class="chip" href="https://tshasan.github.io/centroid-gap/paper/main.pdf">Paper</a>
       <a class="chip" href="https://github.com/tshasan/centroid-gap">Source</a>
     </div>
   </section>

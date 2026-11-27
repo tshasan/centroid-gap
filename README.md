@@ -2,7 +2,7 @@
 
 Lean 4 proofs about one choice in vector search: deciding which lists of an IVF index to scan by each list's mean vector (its centroid).
 
-**Paper:** [How Much Can Centroid Routing Cost in IVF Search?](paper/main.pdf) Not peer reviewed.
+**Paper:** [How Much Can Centroid Routing Cost in IVF Search?](paper/main.pdf) ([direct PDF](https://tshasan.github.io/centroid-gap/paper/main.pdf)) · **Demo:** [Interactive CG-1 demo](https://tshasan.github.io/centroid-gap/) · Not peer reviewed.
 
 By Taimur Hasan, working with the coding agents Claude, Codex and Pi and frontier language models including Neon, Fable, Opus and ChatGPT.
 
@@ -11,7 +11,7 @@ By Taimur Hasan, working with the coding agents Claude, Codex and Pi and frontie
 All are proved in Lean. They are worst cases on constructed data, not typical behavior.
 
 - **A sharp ceiling.** Two balanced indexes with the same number of lists differ in full-recall work by at most (1+√(N+1))/2.
-- **Optimal k-means can nearly reach it.** On the unit sphere, the unique optimal spherical k-means index, routed by its normalized means, costs (1+√N)/2 times more than the same lists with one representative changed: within 1/(4√N) of the ceiling. The winner leads by more than 0.09 in cosine. Spherical e-means trains into this partition from warm starts, and from random starts with probability at least p(k) → 1/e.
+- **Optimal k-means can nearly reach it.** On the unit sphere, the unique optimal spherical k-means index, routed by its normalized means, costs (1+√N)/2 times more than the same lists with one representative changed: within 1/(4√N) of the ceiling. The winner leads by more than 0.09 in cosine. Spherical k-means trains into this partition from warm starts, and from random starts with probability at least p(k) → 1/e.
 - **In the plane, half of it.** For every N = 4s², the unique optimal k-means partition costs 1+√N/4 times the work of another equal-size partition at full recall@1. One bias per list closes the gap.
 - **One vector per fixed list has a floor.** On fixed lists that each hold a direction and its opposite, any router with one vector and one bias per list opens at least (k+3)/4 lists on average. The bound is attained. Two vectors per list open one.
 - **Graph pruning can strand a winner.** In an idealized DiskANN `RobustPrune`, L+3 points leave a winner that leads by more than 0.4 in cosine with a single neighbor; width-L beam search never finds it.
@@ -20,7 +20,7 @@ On two benchmarks of one million vectors each, an oracle did 70–83% less work 
 
 ## Demo
 
-Open [`demo/index.html`](demo/index.html) in a browser: route a query through k-means lists, see the trap from the paper, and press one button to fix it.
+Try the [live interactive demo](https://tshasan.github.io/centroid-gap/) (or open [`demo/index.html`](demo/index.html) locally): route a query through k-means lists, see the trap from the paper, and press one button to fix it.
 
 ## Check the proofs
 

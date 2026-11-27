@@ -1,0 +1,423 @@
+{
+  "environment": {
+    "python": "3.12.16",
+    "faiss": "1.12.0",
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "architecture": "arm64",
+    "faiss_threads": 1,
+    "emeans_commit": "2b648f0605f2ef3d14c4705350f8a0b214463878",
+    "emeans_source_sha256": {
+      "__init__.py": "ad196786de8eb8ab7a229908b86ad8548a72459ade95e9e9c3275943dd50bb78",
+      "base.py": "bcffd7829ebfc25e1354308770b49e6f99d8566ba5e474a41a22e9ec414b17cd",
+      "e_means.py": "b1710504fdbef21efdd33d8489a56f8e7fc6056182afbed3f355985302c2e77c",
+      "e_means_spherical.py": "d4e4177593f70e284bd2f6ad8812170e2a830ea62c697c514edc6298a00ea7a6"
+    }
+  },
+  "warm_start": "anchor[i] + (1/200) * address_axis[i,0], normalized inside begin",
+  "seed": 2026,
+  "epochs": 5,
+  "spherical": true,
+  "capture_assignments": true,
+  "cases": [
+    {
+      "k": 2,
+      "documents": 4,
+      "dimension": 7,
+      "t": 0.00025,
+      "distinct_fp32_documents": 4,
+      "max_document_norm_error": 2.4105570206600646e-08,
+      "top_two_cosines": [
+        0.5,
+        0.3999999463558197
+      ],
+      "tip_lead": 0.1000000536441803,
+      "max_raw_start_distance_from_anchor": 0.0049999998883181115,
+      "runs": {
+        "mini_no_revival": {
+          "recipe": {
+            "name": "manual_batch",
+            "batch_law": null,
+            "batch_size": 1,
+            "alpha0": 0.2706853306651795,
+            "total_steps": 20,
+            "unused_threshold": 0.0
+          },
+          "training": {
+            "all_epochs_visit_each_document_once": true,
+            "assignment_errors_all_epochs": 0,
+            "unbalanced_batches": 20,
+            "batches_missing_a_home": 20,
+            "revival_checks": 4,
+            "unused_targets_at_checks": 0,
+            "min_mass_over_mean_at_checks": 0.7793580293655396,
+            "splits": 0
+          },
+          "observed_replay_matches_uninstrumented": true,
+          "moving_last_epoch_labels_match_rows": true,
+          "frozen_labels_match_rows": true,
+          "max_closing_mean_l2_error": 1.0500135445982924e-07,
+          "min_max_stored_list_size": [
+            2,
+            2
+          ],
+          "owner_cosine": 0.258819043636322,
+          "lowest_other_cosine": 0.3999999165534973,
+          "owner_rank_before_after": [
+            2,
+            1
+          ],
+          "native_scans_before_after": [
+            4,
+            2
+          ],
+          "work_ratio": 1.5
+        },
+        "full_default_threshold": {
+          "recipe": {
+            "name": "manual_batch",
+            "batch_law": null,
+            "batch_size": 4,
+            "alpha0": 0.942973158319429,
+            "total_steps": 5,
+            "unused_threshold": 0.1
+          },
+          "training": {
+            "all_epochs_visit_each_document_once": true,
+            "assignment_errors_all_epochs": 0,
+            "unbalanced_batches": 0,
+            "batches_missing_a_home": 0,
+            "revival_checks": 1,
+            "unused_targets_at_checks": 0,
+            "min_mass_over_mean_at_checks": 1.0,
+            "splits": 0
+          },
+          "observed_replay_matches_uninstrumented": true,
+          "moving_last_epoch_labels_match_rows": true,
+          "frozen_labels_match_rows": true,
+          "max_closing_mean_l2_error": 1.0500135445982924e-07,
+          "min_max_stored_list_size": [
+            2,
+            2
+          ],
+          "owner_cosine": 0.258819043636322,
+          "lowest_other_cosine": 0.3999999165534973,
+          "owner_rank_before_after": [
+            2,
+            1
+          ],
+          "native_scans_before_after": [
+            4,
+            2
+          ],
+          "work_ratio": 1.5
+        },
+        "default_recipe": {
+          "recipe": {
+            "name": "canonical_v1",
+            "batch_law": "quality",
+            "batch_size": 1,
+            "alpha0": 0.2706853306651795,
+            "total_steps": 20,
+            "unused_threshold": 0.1
+          },
+          "training": {
+            "all_epochs_visit_each_document_once": true,
+            "assignment_errors_all_epochs": 0,
+            "unbalanced_batches": 20,
+            "batches_missing_a_home": 20,
+            "revival_checks": 4,
+            "unused_targets_at_checks": 0,
+            "min_mass_over_mean_at_checks": 0.7793580293655396,
+            "splits": 0
+          },
+          "observed_replay_matches_uninstrumented": true,
+          "moving_last_epoch_labels_match_rows": true,
+          "frozen_labels_match_rows": true,
+          "max_closing_mean_l2_error": 1.0500135445982924e-07,
+          "min_max_stored_list_size": [
+            2,
+            2
+          ],
+          "owner_cosine": 0.258819043636322,
+          "lowest_other_cosine": 0.3999999165534973,
+          "owner_rank_before_after": [
+            2,
+            1
+          ],
+          "native_scans_before_after": [
+            4,
+            2
+          ],
+          "work_ratio": 1.5
+        }
+      }
+    },
+    {
+      "k": 8,
+      "documents": 64,
+      "dimension": 73,
+      "t": 1.5625e-05,
+      "distinct_fp32_documents": 64,
+      "max_document_norm_error": 2.1935718907961643e-08,
+      "top_two_cosines": [
+        0.5,
+        0.4000000059604645
+      ],
+      "tip_lead": 0.09999999403953552,
+      "max_raw_start_distance_from_anchor": 0.0049999998883181115,
+      "runs": {
+        "mini_no_revival": {
+          "recipe": {
+            "name": "manual_batch",
+            "batch_law": null,
+            "batch_size": 7,
+            "alpha0": 0.236440690931082,
+            "total_steps": 50,
+            "unused_threshold": 0.0
+          },
+          "training": {
+            "all_epochs_visit_each_document_once": true,
+            "assignment_errors_all_epochs": 0,
+            "unbalanced_batches": 50,
+            "batches_missing_a_home": 50,
+            "revival_checks": 10,
+            "unused_targets_at_checks": 0,
+            "min_mass_over_mean_at_checks": 0.3395185172557831,
+            "splits": 0
+          },
+          "observed_replay_matches_uninstrumented": true,
+          "moving_last_epoch_labels_match_rows": true,
+          "frozen_labels_match_rows": true,
+          "max_closing_mean_l2_error": 4.383440754914973e-08,
+          "min_max_stored_list_size": [
+            8,
+            8
+          ],
+          "owner_cosine": 0.06343647092580795,
+          "lowest_other_cosine": 0.3999999761581421,
+          "owner_rank_before_after": [
+            8,
+            1
+          ],
+          "native_scans_before_after": [
+            64,
+            8
+          ],
+          "work_ratio": 4.5
+        },
+        "full_default_threshold": {
+          "recipe": {
+            "name": "manual_batch",
+            "batch_law": null,
+            "batch_size": 64,
+            "alpha0": 1.0,
+            "total_steps": 5,
+            "unused_threshold": 0.1
+          },
+          "training": {
+            "all_epochs_visit_each_document_once": true,
+            "assignment_errors_all_epochs": 0,
+            "unbalanced_batches": 0,
+            "batches_missing_a_home": 0,
+            "revival_checks": 1,
+            "unused_targets_at_checks": 0,
+            "min_mass_over_mean_at_checks": 1.0,
+            "splits": 0
+          },
+          "observed_replay_matches_uninstrumented": true,
+          "moving_last_epoch_labels_match_rows": true,
+          "frozen_labels_match_rows": true,
+          "max_closing_mean_l2_error": 3.893409783975207e-08,
+          "min_max_stored_list_size": [
+            8,
+            8
+          ],
+          "owner_cosine": 0.06343647092580795,
+          "lowest_other_cosine": 0.4000000059604645,
+          "owner_rank_before_after": [
+            8,
+            1
+          ],
+          "native_scans_before_after": [
+            64,
+            8
+          ],
+          "work_ratio": 4.5
+        },
+        "default_recipe": {
+          "recipe": {
+            "name": "canonical_v1",
+            "batch_law": "throughput",
+            "batch_size": 8,
+            "alpha0": 0.26664434012343796,
+            "total_steps": 40,
+            "unused_threshold": 0.1
+          },
+          "training": {
+            "all_epochs_visit_each_document_once": true,
+            "assignment_errors_all_epochs": 0,
+            "unbalanced_batches": 40,
+            "batches_missing_a_home": 40,
+            "revival_checks": 8,
+            "unused_targets_at_checks": 0,
+            "min_mass_over_mean_at_checks": 0.33534345030784607,
+            "splits": 0
+          },
+          "observed_replay_matches_uninstrumented": true,
+          "moving_last_epoch_labels_match_rows": true,
+          "frozen_labels_match_rows": true,
+          "max_closing_mean_l2_error": 4.383440754914973e-08,
+          "min_max_stored_list_size": [
+            8,
+            8
+          ],
+          "owner_cosine": 0.06343647092580795,
+          "lowest_other_cosine": 0.3999999761581421,
+          "owner_rank_before_after": [
+            8,
+            1
+          ],
+          "native_scans_before_after": [
+            64,
+            8
+          ],
+          "work_ratio": 4.5
+        }
+      }
+    },
+    {
+      "k": 32,
+      "documents": 1024,
+      "dimension": 1057,
+      "t": 9.765625e-07,
+      "distinct_fp32_documents": 1024,
+      "max_document_norm_error": 2.2422092849083697e-08,
+      "top_two_cosines": [
+        0.5,
+        0.4000000059604645
+      ],
+      "tip_lead": 0.09999999403953552,
+      "max_raw_start_distance_from_anchor": 0.0049999998883181115,
+      "runs": {
+        "mini_no_revival": {
+          "recipe": {
+            "name": "manual_batch",
+            "batch_law": null,
+            "batch_size": 31,
+            "alpha0": 0.1367631581828521,
+            "total_steps": 170,
+            "unused_threshold": 0.0
+          },
+          "training": {
+            "all_epochs_visit_each_document_once": true,
+            "assignment_errors_all_epochs": 0,
+            "unbalanced_batches": 170,
+            "batches_missing_a_home": 170,
+            "revival_checks": 34,
+            "unused_targets_at_checks": 0,
+            "min_mass_over_mean_at_checks": 0.23403975367546082,
+            "splits": 0
+          },
+          "observed_replay_matches_uninstrumented": true,
+          "moving_last_epoch_labels_match_rows": true,
+          "frozen_labels_match_rows": true,
+          "max_closing_mean_l2_error": 1.3932418543797974e-07,
+          "min_max_stored_list_size": [
+            32,
+            32
+          ],
+          "owner_cosine": 0.015688762068748474,
+          "lowest_other_cosine": 0.3999999165534973,
+          "owner_rank_before_after": [
+            32,
+            1
+          ],
+          "native_scans_before_after": [
+            1024,
+            32
+          ],
+          "work_ratio": 16.5
+        },
+        "full_default_threshold": {
+          "recipe": {
+            "name": "manual_batch",
+            "batch_law": null,
+            "batch_size": 1024,
+            "alpha0": 1.0,
+            "total_steps": 5,
+            "unused_threshold": 0.1
+          },
+          "training": {
+            "all_epochs_visit_each_document_once": true,
+            "assignment_errors_all_epochs": 0,
+            "unbalanced_batches": 0,
+            "batches_missing_a_home": 0,
+            "revival_checks": 1,
+            "unused_targets_at_checks": 0,
+            "min_mass_over_mean_at_checks": 1.0,
+            "splits": 0
+          },
+          "observed_replay_matches_uninstrumented": true,
+          "moving_last_epoch_labels_match_rows": true,
+          "frozen_labels_match_rows": true,
+          "max_closing_mean_l2_error": 1.8625611458251347e-07,
+          "min_max_stored_list_size": [
+            32,
+            32
+          ],
+          "owner_cosine": 0.015688762068748474,
+          "lowest_other_cosine": 0.39999985694885254,
+          "owner_rank_before_after": [
+            32,
+            1
+          ],
+          "native_scans_before_after": [
+            1024,
+            32
+          ],
+          "work_ratio": 16.5
+        },
+        "default_recipe": {
+          "recipe": {
+            "name": "canonical_v1",
+            "batch_law": "throughput",
+            "batch_size": 64,
+            "alpha0": 0.2626636764731402,
+            "total_steps": 80,
+            "unused_threshold": 0.1
+          },
+          "training": {
+            "all_epochs_visit_each_document_once": true,
+            "assignment_errors_all_epochs": 0,
+            "unbalanced_batches": 80,
+            "batches_missing_a_home": 78,
+            "revival_checks": 16,
+            "unused_targets_at_checks": 0,
+            "min_mass_over_mean_at_checks": 0.4250751733779907,
+            "splits": 0
+          },
+          "observed_replay_matches_uninstrumented": true,
+          "moving_last_epoch_labels_match_rows": true,
+          "frozen_labels_match_rows": true,
+          "max_closing_mean_l2_error": 1.393241854379717e-07,
+          "min_max_stored_list_size": [
+            32,
+            32
+          ],
+          "owner_cosine": 0.015688762068748474,
+          "lowest_other_cosine": 0.3999999165534973,
+          "owner_rank_before_after": [
+            32,
+            1
+          ],
+          "native_scans_before_after": [
+            1024,
+            32
+          ],
+          "work_ratio": 16.5
+        }
+      }
+    }
+  ]
+}

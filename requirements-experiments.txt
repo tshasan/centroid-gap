@@ -1,0 +1,5 @@
+# Pinned environment for experiments/ and tools/ivf_tune (results were produced with these).
+# python 3.12:  uv venv --python 3.12 .venv && uv pip install -r requirements-experiments.txt
+numpy==2.5.4
+scipy==1.18.1
+faiss-cpu==1.12.0

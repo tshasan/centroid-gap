@@ -1,0 +1,2 @@
+t2i seed 2027: 138,723 fit queries (16,243 original)
+centroids {'val': 32704, 'test': 36700, 'image_val': 9731, 'image': 9754}

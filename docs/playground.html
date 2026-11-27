@@ -1,0 +1,1396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Centroid Gap Playground</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one Braun-style instrument. A control deck of labelled modules on top,
+   three square screens below, then a strip of history meters. Charcoal for centroids,
+   signal orange for tips, olive for the oracle and the true answer. */
+:root {
+  --body: #e4e2dd;      /* housing */
+  --face: #f2f1ed;      /* module face */
+  --screen: #fbfaf8;    /* canvas glass */
+  --ink: #1d1d1b;
+  --ink-2: #6b6963;
+  --rule: #d3d0c9;
+  --cell: #e2dfd8;
+  --pt: #8d8a83;
+  --accent: #e0561a;    /* Braun signal orange */
+  --accent-ink: #ffffff;
+  --green: #5c7a35;
+  --key: #2a2a28;
+  --key-ink: #f2f1ed;
+  --shadow: rgba(40, 36, 28, 0.16);
+  --hi: rgba(255, 255, 255, 0.9);
+
+  --f-ui: "Inter Tight", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --f-num: "DM Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --body: #121211; --face: #1c1c1a; --screen: #141413; --ink: #ecebe6; --ink-2: #9b988f;
+    --rule: #33322e; --cell: #262522; --pt: #77746d; --accent: #f06a2c; --accent-ink: #1a1009;
+    --green: #93ad62; --key: #3b3a36; --key-ink: #ecebe6; --shadow: rgba(0, 0, 0, 0.5);
+    --hi: rgba(255, 255, 255, 0.05); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --body: #121211; --face: #1c1c1a; --screen: #141413; --ink: #ecebe6; --ink-2: #9b988f;
+  --rule: #33322e; --cell: #262522; --pt: #77746d; --accent: #f06a2c; --accent-ink: #1a1009;
+  --green: #93ad62; --key: #3b3a36; --key-ink: #ecebe6; --shadow: rgba(0, 0, 0, 0.5);
+  --hi: rgba(255, 255, 255, 0.05); color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--body);
+  color: var(--ink);
+  font: 15px/1.5 var(--f-ui);
+  -webkit-font-smoothing: antialiased;
+}
+.wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 18px;
+}
+a { color: inherit; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+a:hover { text-decoration-color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.num { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+
+/* Header */
+header.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.mark { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.mark-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); }
+.mark span { font-weight: 600; font-size: 17px; letter-spacing: -0.01em; }
+nav.links { display: flex; gap: 20px; flex-wrap: wrap; font-size: 13.5px; color: var(--ink-2); }
+nav.links a { text-decoration: none; }
+nav.links a:hover { color: var(--ink); }
+
+.intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: end;
+  padding-block: 18px 6px;
+}
+h1 {
+  margin: 0;
+  font-size: clamp(30px, 5vw, 48px);
+  line-height: 1.02;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+.lede { margin: 12px 0 0; max-width: 62ch; color: var(--ink-2); font-size: 16px; }
+.grille {
+  width: 132px; height: 72px;
+  background-image: radial-gradient(circle, var(--ink-2) 1.6px, transparent 2px);
+  background-size: 12px 12px;
+  opacity: 0.55;
+  border-radius: 6px;
+}
+
+/* Device */
+.device {
+  background: var(--face);
+  border-radius: 20px;
+  box-shadow: inset 0 1px 0 var(--hi), 0 1px 2px var(--shadow), 0 24px 48px -32px var(--shadow);
+  overflow: hidden;
+}
+.deck {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+  border-bottom: 1px solid var(--rule);
+}
+.module {
+  padding: 16px 18px 18px;
+  border-right: 1px solid var(--rule);
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+}
+.module > .label { margin-bottom: 2px; }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; }
+.field-head .num { font-size: 12.5px; color: var(--ink); }
+
+select, input[type="number"] {
+  font: 500 13px var(--f-ui);
+  color: var(--ink);
+  background: var(--screen);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 7px 10px;
+  width: 100%;
+  min-width: 0;
+}
+select:disabled { opacity: 0.45; }
+input[type="number"] { font-family: var(--f-num); }
+
+input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 18px; margin: 0;
+  background: transparent; cursor: pointer;
+  --p: 50%;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px; border-radius: 2px;
+  background: linear-gradient(to right, var(--ink) var(--p), var(--rule) var(--p));
+}
+input[type="range"]::-moz-range-track { height: 3px; border-radius: 2px; background: var(--rule); }
+input[type="range"]::-moz-range-progress { height: 3px; border-radius: 2px; background: var(--ink); }
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 16px; height: 16px; margin-top: -6.5px; border-radius: 50%;
+  background: var(--key); border: 3px solid var(--face);
+  box-shadow: 0 0 0 1px var(--rule), 0 1px 3px var(--shadow);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--key); border: 3px solid var(--face);
+  box-shadow: 0 0 0 1px var(--rule), 0 1px 3px var(--shadow);
+}
+
+.switch { display: grid; grid-template-columns: 1fr 1fr; background: var(--screen); border: 1px solid var(--rule); border-radius: 8px; padding: 2px; }
+.switch button {
+  font: 500 12.5px var(--f-num); color: var(--ink-2);
+  background: transparent; border: 0; border-radius: 6px; padding: 6px 0; cursor: pointer;
+}
+.switch button[aria-pressed="true"] { background: var(--key); color: var(--key-ink); }
+.switch button:disabled { opacity: 0.4; cursor: default; }
+
+.keys {
+  padding: 16px 22px 18px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 8px;
+}
+.key {
+  width: 64px; height: 64px; border-radius: 50%;
+  border: 0; cursor: pointer;
+  background: var(--accent); color: var(--accent-ink);
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,0.14), inset 0 2px 0 rgba(255,255,255,0.22), 0 2px 6px var(--shadow);
+  display: grid; place-items: center;
+  transition: transform 80ms ease;
+}
+.key:active { transform: translateY(1px); box-shadow: inset 0 -1px 0 rgba(0,0,0,0.14), 0 1px 2px var(--shadow); }
+.key svg { width: 22px; height: 22px; }
+
+/* Summary meters */
+.meters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid var(--rule); }
+.meter { padding: 16px 20px; border-right: 1px solid var(--rule); display: grid; gap: 4px; min-width: 0; }
+.meter:last-child, .module:last-of-type { border-right: 0; }
+.meter-head { display: flex; align-items: center; gap: 8px; }
+.sw { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.sw.c { background: var(--ink); }
+.sw.t { background: var(--accent); }
+.sw.o { background: var(--green); }
+.meter .big { font-family: var(--f-num); font-size: clamp(24px, 3.2vw, 34px); letter-spacing: -0.02em; line-height: 1.1; }
+.meter .big small { font-size: 12px; color: var(--ink-2); letter-spacing: 0; margin-left: 6px; font-family: var(--f-ui); }
+.meter .sub { font-size: 13px; color: var(--ink-2); display: flex; gap: 10px; flex-wrap: wrap; }
+.delta { font-family: var(--f-num); font-size: 12.5px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--rule); color: var(--ink); }
+.delta.good { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.delta.oracle { background: var(--green); border-color: var(--green); color: var(--face); }
+
+/* Screens */
+.screens { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; padding: 20px; }
+.screen { display: grid; gap: 10px; min-width: 0; align-content: start; }
+.screen-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.screen-head .t { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+.glass {
+  position: relative; width: 100%; aspect-ratio: 1 / 1; max-width: 100%;
+  background: var(--screen);
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px var(--rule), inset 0 2px 6px var(--shadow);
+  overflow: hidden;
+}
+.glass canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.glass.pick canvas { cursor: crosshair; touch-action: none; }
+.readout { font-size: 13px; color: var(--ink-2); min-height: 40px; }
+.readout b { color: var(--ink); font-weight: 500; font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 16px; height: 0; border-top: 2px solid var(--ink); display: inline-block; }
+.legend i.t { border-color: var(--accent); }
+.legend i.o { border-color: var(--green); border-top-style: dashed; }
+
+/* Transport */
+.transport {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; align-items: center;
+  padding: 14px 20px; border-top: 1px solid var(--rule);
+}
+.mini-key {
+  width: 36px; height: 36px; border-radius: 50%; border: 0; cursor: pointer;
+  background: var(--key); color: var(--key-ink); display: grid; place-items: center;
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,0.25), 0 1px 3px var(--shadow);
+}
+.mini-key svg { width: 14px; height: 14px; }
+#iterRange { --p: 100%; }
+.iter-label { font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+
+.history { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; padding: 0 20px 20px; }
+.spark { display: grid; gap: 8px; min-width: 0; }
+.spark .glass { aspect-ratio: 3.4 / 1; border-radius: 10px; }
+.status { font-size: 12.5px; color: var(--ink-2); padding: 0 20px 18px; }
+
+/* Notes */
+.notes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; padding-block: 12px; }
+.notes h2 { margin: 0 0 8px; font-size: 15px; font-weight: 600; letter-spacing: -0.005em; }
+.notes p { margin: 0 0 10px; color: var(--ink-2); font-size: 14px; max-width: 60ch; }
+.notes p b { color: var(--ink); font-weight: 500; }
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; font-size: 13px; width: 100%; }
+th, td { text-align: right; padding: 6px 0 6px 12px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; padding-left: 0; }
+th { font-weight: 500; color: var(--ink-2); font-size: 11.5px; }
+td { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+td:first-child { font-family: var(--f-ui); }
+footer { font-size: 12.5px; color: var(--ink-2); border-top: 1px solid var(--rule); padding-top: 14px; }
+
+/* Headline results and explainer */
+h2 { margin: 0; font-size: 22px; font-weight: 500; letter-spacing: -0.02em; text-wrap: balance; }
+.impact { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.stat { border-top: 2px solid var(--ink); padding-top: 12px; display: grid; gap: 4px; align-content: start; }
+.stat:first-child { border-top-color: var(--accent); }
+.stat-n { font-size: clamp(38px, 5.4vw, 56px); line-height: 1; letter-spacing: -0.04em; }
+.stat p { margin: 4px 0 0; font-size: 14px; color: var(--ink-2); max-width: 42ch; }
+.explain { display: grid; gap: 14px; padding-block: 18px 6px; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; counter-reset: s; background: var(--face); border-radius: 16px; box-shadow: inset 0 1px 0 var(--hi), 0 1px 2px var(--shadow); }
+.steps li { padding: 16px 18px 18px; border-right: 1px solid var(--rule); counter-increment: s; min-width: 0; }
+.steps li:last-child { border-right: 0; }
+.steps li .label::before { content: counter(s); display: inline-grid; place-items: center; width: 18px; height: 18px; margin-right: 8px; border-radius: 50%; background: var(--key); color: var(--key-ink); font-family: var(--f-num); font-size: 10.5px; letter-spacing: 0; }
+.steps p { margin: 10px 0 0; font-size: 14px; color: var(--ink-2); }
+.steps b { color: var(--ink); font-weight: 500; }
+.section-head { display: grid; gap: 6px; padding-top: 22px; }
+.section-head p { margin: 0; color: var(--ink-2); max-width: 70ch; }
+
+/* Tour */
+.tour { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--rule); background: var(--screen); }
+.tour-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font: 500 13px var(--f-ui); color: var(--ink); background: var(--face); border: 1px solid var(--rule); border-radius: 999px; padding: 6px 12px 6px 6px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.chip .num { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--rule); font-size: 11px; }
+.chip[aria-pressed="true"] { background: var(--key); color: var(--key-ink); border-color: var(--key); }
+.chip[aria-pressed="true"] .num { background: var(--accent); color: var(--accent-ink); }
+.tour-cap { margin: 0; font-size: 13.5px; color: var(--ink-2); max-width: 72ch; }
+.tour-cap b { color: var(--ink); font-weight: 500; }
+
+.verdict { padding: 14px 20px; border-bottom: 1px solid var(--rule); font-size: 15px; }
+.verdict b { font-family: var(--f-num); font-weight: 500; font-variant-numeric: tabular-nums; }
+.verdict .hl { background: var(--accent); color: var(--accent-ink); padding: 0 6px; border-radius: 4px; }
+
+/* Theory panels */
+.theory { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.panel { padding: 20px; display: grid; gap: 14px; align-content: start; min-width: 0; border-right: 1px solid var(--rule); }
+.panel:last-child { border-right: 0; }
+.panel-p { margin: 0; font-size: 14px; color: var(--ink-2); max-width: 62ch; }
+.glass.wide { aspect-ratio: 2.1 / 1; }
+.glass.four { aspect-ratio: 2.6 / 1; }
+.gap-read, .four-read { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.four-read { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.gap-big { font-size: 26px; letter-spacing: -0.02em; line-height: 1.15; }
+.gap-big.accent { color: var(--accent); }
+.gap-sub { font-size: 12.5px; color: var(--ink-2); }
+.four-res { font-size: 14px; margin-top: 4px; }
+.four-res b { font-weight: 600; }
+.ok { color: var(--green); }
+.bad { color: var(--accent); }
+.legend i.u { border-color: var(--ink-2); border-top-style: dotted; }
+
+@media (max-width: 1060px) {
+  .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .steps li:nth-child(2) { border-right: 0; }
+  .steps li:nth-child(-n+2) { border-bottom: 1px solid var(--rule); }
+  .theory { grid-template-columns: 1fr; }
+  .panel { border-right: 0; border-bottom: 1px solid var(--rule); }
+  .panel:last-child { border-bottom: 0; }
+  .tour { grid-template-columns: 1fr; }
+  .deck { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .module { border-bottom: 1px solid var(--rule); }
+  .module:nth-child(3) { border-right: 0; }
+  .keys { border-bottom: 1px solid var(--rule); }
+  .screens { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .notes { grid-template-columns: 1fr; gap: 8px; }
+}
+@media (max-width: 680px) {
+  .intro { grid-template-columns: 1fr; }
+  .impact { grid-template-columns: 1fr; }
+  .steps { grid-template-columns: 1fr; }
+  .steps li { border-right: 0; border-bottom: 1px solid var(--rule); }
+  .steps li:last-child { border-bottom: 0; }
+  .gap-big { font-size: 20px; }
+  .panel { padding: 16px; }
+  .grille { display: none; }
+  .deck { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .module:nth-child(3) { border-right: 1px solid var(--rule); }
+  .module:nth-child(2n) { border-right: 0; }
+  .keys { grid-column: 1 / -1; grid-auto-flow: column; justify-content: center; align-items: center; }
+  .meters { grid-template-columns: 1fr; }
+  .meter { border-right: 0; border-bottom: 1px solid var(--rule); }
+  .meter:last-child { border-bottom: 0; }
+  .screens { grid-template-columns: 1fr; padding: 16px; }
+  .history { grid-template-columns: 1fr; padding: 0 16px 16px; }
+  .transport { padding: 12px 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .key { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="mark" href="../README.md"><div class="mark-dot"></div><span>centroid-gap</span></a>
+    <nav class="links">
+      <a href="../README.md#results">Results</a>
+      <a href="../paper/main.pdf">Paper</a>
+      <a href="README.md#demos">Demos</a>
+    </nav>
+  </header>
+
+  <section class="intro">
+    <div>
+      <h1>Centroids pick the wrong lists</h1>
+      <p class="lede">Vector search engines split their data into lists and choose which lists to open by each list's average point. This project proves that this choice can waste most of the search work, even when the lists are the best k-means can find, and measures how much is wasted on real embeddings.</p>
+    </div>
+    <div class="grille" aria-hidden="true"></div>
+  </section>
+
+  <section class="impact" aria-label="Headline results">
+    <div class="stat">
+      <div class="label">Proved, in the plane</div>
+      <div class="stat-n num">17×</div>
+      <p>more distance computations for the unique best k-means index than for an equally balanced one, at 4,096 points. The factor grows as 1 + √N / 4.</p>
+    </div>
+    <div class="stat">
+      <div class="label">Measured, 1M vectors</div>
+      <div class="stat-n num">83%</div>
+      <p>less work at 95% recall@10 on Text-to-Image for an oracle that is told where the answers are: 6 lists where centroids needed 34. On DEEP it is 70%. This is an upper bound on savings, not a target.</p>
+    </div>
+    <div class="stat">
+      <div class="label">Checked by machine</div>
+      <div class="stat-n num">1,323</div>
+      <p>theorem declarations in Lean 4, audited to use only Lean's three standard axioms. A second, independent checker accepted the gap results.</p>
+    </div>
+  </section>
+
+  <section class="explain" aria-labelledby="explainTitle">
+    <h2 id="explainTitle">What this means</h2>
+    <ol class="steps">
+      <li>
+        <div class="label">How the search works</div>
+        <p>An inverted-file (IVF) index, as in Faiss, stores vectors in lists and keeps one <b>centroid</b> per list, the list's mean. A query ranks the lists by distance to their centroids and scans the closest few. Each list opened is a <b>probe</b>; every vector scanned costs one distance.</p>
+      </li>
+      <li>
+        <div class="label">Where it goes wrong</div>
+        <p>A mean describes the middle of a list, not its edges. When a query's true neighbour sits near the edge of its list, another list's centroid can look closer, and the search pays to scan lists that do not hold the answer.</p>
+      </li>
+      <li>
+        <div class="label">What the proofs show</div>
+        <p>This is not a quirk of bad clustering. Even the <b>unique globally optimal</b> k-means index, with exactly equal list sizes, can rank the answer's list last. The extra work grows like √N, which is the largest order possible. Changing only the representatives, with the lists untouched, removes the gap.</p>
+      </li>
+      <li>
+        <div class="label">What the experiments show</div>
+        <p>On two million-vector benchmarks an oracle told where the answers are did 70% and 83% less work. That is an upper bound on what any router could save. Retrained routing vectors lost to the centroids; one learned bias per list (<code>ivf_tune</code>) saved 6–9%, about a tenth of the oracle gap.</p>
+      </li>
+    </ol>
+  </section>
+
+  <div class="section-head">
+    <h2>Try it</h2>
+    <p>Build a small index in your browser and compare three ways to choose lists: by centroid, by a few stored points per list (tips), and by an oracle that knows where the answers are. Start with a guided preset.</p>
+  </div>
+
+  <main class="device">
+    <div class="tour">
+      <div class="tour-chips" role="tablist" aria-label="Guided presets">
+        <button type="button" class="chip" data-tour="proof" aria-pressed="false"><span class="num">1</span>The proof</button>
+        <button type="button" class="chip" data-tour="between" aria-pressed="true"><span class="num">2</span>Hard queries</button>
+        <button type="button" class="chip" data-tour="like" aria-pressed="false"><span class="num">3</span>Easy queries</button>
+        <button type="button" class="chip" data-tour="train" aria-pressed="false"><span class="num">4</span>Loss vs. search</button>
+      </div>
+      <p class="tour-cap" id="tourCap"></p>
+    </div>
+    <div class="deck">
+      <div class="module">
+        <div class="label">Data</div>
+        <div class="field">
+          <div class="field-head"><label for="shape">Shape</label></div>
+          <select id="shape">
+            <option value="blobs" selected>Gaussian blobs</option>
+            <option value="aniso">Stretched blobs</option>
+            <option value="moons">Moons</option>
+            <option value="rings">Rings</option>
+            <option value="spiral">Spiral arms</option>
+            <option value="uniform">Uniform square</option>
+            <optgroup label="From the proofs">
+              <option value="line">Line family, rank k</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="field">
+          <div class="field-head"><label for="nLog">Points n</label><span class="num" id="nVal">20,000</span></div>
+          <input type="range" id="nLog" min="3.3" max="4.7" step="0.01" value="4.3">
+        </div>
+        <div class="field">
+          <div class="field-head"><label for="seed">Seed</label></div>
+          <input type="number" id="seed" min="0" value="3">
+        </div>
+      </div>
+
+      <div class="module">
+        <div class="label">Queries</div>
+        <div class="field">
+          <div class="field-head"><label for="qmode">Where they land</label></div>
+          <select id="qmode">
+            <option value="held">Like the data</option>
+            <option value="between" selected>Between points</option>
+            <option value="uniform">Anywhere</option>
+          </select>
+        </div>
+        <div class="field">
+          <div class="field-head"><label for="qN">Workload</label><span class="num" id="qVal">400</span></div>
+          <input type="range" id="qN" min="100" max="1000" step="50" value="400">
+        </div>
+        <div class="field">
+          <div class="field-head"><span>Recall@</span></div>
+          <div class="switch" id="kSwitch">
+            <button type="button" id="k1" aria-pressed="false">1</button>
+            <button type="button" id="k10" aria-pressed="true">10</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="module">
+        <div class="label">Index</div>
+        <div class="field">
+          <div class="field-head"><label for="kLog">Lists k</label><span class="num" id="kVal">64</span></div>
+          <input type="range" id="kLog" min="2" max="8" step="1" value="6">
+        </div>
+        <div class="field">
+          <div class="field-head"><label for="iters">Lloyd iterations</label><span class="num" id="itersVal">12</span></div>
+          <input type="range" id="iters" min="1" max="30" step="1" value="12">
+        </div>
+      </div>
+
+      <div class="module">
+        <div class="label">Tip router</div>
+        <div class="field">
+          <div class="field-head"><label for="tipKind">Tips</label></div>
+          <select id="tipKind">
+            <option value="far" selected>Farthest points</option>
+            <option value="sub">Sub-centroids</option>
+          </select>
+        </div>
+        <div class="field">
+          <div class="field-head"><label for="m">Tips per list m</label><span class="num" id="mVal">4</span></div>
+          <input type="range" id="m" min="1" max="8" step="1" value="4">
+        </div>
+      </div>
+
+      <div class="module">
+        <div class="label">Target</div>
+        <div class="field">
+          <div class="field-head"><label for="target">Recall</label><span class="num" id="targetVal">95%</span></div>
+          <input type="range" id="target" min="50" max="99" step="1" value="95">
+        </div>
+        <p class="readout" style="margin:0;min-height:0">Work counts every distance a query computes: one per tip, then one per scanned vector.</p>
+      </div>
+
+      <div class="keys">
+        <button class="key" id="playBtn" type="button" aria-label="Replay training">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z" fill="currentColor"/></svg>
+        </button>
+        <div class="label">Replay</div>
+      </div>
+    </div>
+
+    <div class="meters" aria-live="polite">
+      <div class="meter">
+        <div class="meter-head"><span class="sw c"></span><span class="label">Centroid router</span></div>
+        <div class="big" id="mC">—</div>
+        <div class="sub" id="mCs">&nbsp;</div>
+      </div>
+      <div class="meter">
+        <div class="meter-head"><span class="sw t"></span><span class="label" id="tipLabel">Tip router</span></div>
+        <div class="big" id="mT">—</div>
+        <div class="sub" id="mTs">&nbsp;</div>
+      </div>
+      <div class="meter">
+        <div class="meter-head"><span class="sw o"></span><span class="label">Oracle bound</span></div>
+        <div class="big" id="mO">—</div>
+        <div class="sub" id="mOs">&nbsp;</div>
+      </div>
+    </div>
+
+    <div class="verdict" id="verdict" aria-live="polite">&nbsp;</div>
+
+    <div class="screens">
+      <div class="screen">
+        <div class="screen-head"><span class="t"><span class="sw c"></span>Centroids</span><span class="label" id="pinLabel">Example query</span></div>
+        <div class="glass pick"><canvas id="cvC" aria-label="Lists routed by centroid"></canvas></div>
+        <div class="readout" id="rC">&nbsp;</div>
+      </div>
+      <div class="screen">
+        <div class="screen-head"><span class="t"><span class="sw t"></span>Tips</span><span class="label">Same lists</span></div>
+        <div class="glass pick"><canvas id="cvT" aria-label="Lists routed by tips"></canvas></div>
+        <div class="readout" id="rT">&nbsp;</div>
+      </div>
+      <div class="screen">
+        <div class="screen-head"><span class="t">Recall against work</span><span class="label">Per query</span></div>
+        <div class="glass"><canvas id="cvChart" aria-label="Recall against distance evaluations"></canvas></div>
+        <div class="legend">
+          <span><i></i>Centroids</span><span><i class="t"></i>Tips</span><span><i class="o"></i>Oracle</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="transport">
+      <button class="mini-key" id="pauseBtn" type="button" aria-label="Play or pause">
+        <svg viewBox="0 0 24 24" aria-hidden="true" id="pauseIcon"><path d="M7 4.5v15l12.5-7.5z" fill="currentColor"/></svg>
+      </button>
+      <input type="range" id="iterRange" min="0" max="12" step="1" value="12" aria-label="Lloyd iteration">
+      <span class="iter-label num" id="iterLabel">iteration 12 / 12</span>
+    </div>
+
+    <div class="history">
+      <div class="spark">
+        <div class="screen-head"><span class="label">K-means loss by iteration</span><span class="num label" id="lossNow"></span></div>
+        <div class="glass"><canvas id="cvLoss" aria-label="K-means loss by iteration"></canvas></div>
+      </div>
+      <div class="spark">
+        <div class="screen-head"><span class="label">Work at target by iteration</span><span class="num label" id="workNow"></span></div>
+        <div class="glass"><canvas id="cvWork" aria-label="Work at target by iteration"></canvas></div>
+      </div>
+    </div>
+    <div class="status num" id="status">Preparing…</div>
+  </main>
+
+  <div class="section-head">
+    <h2>The results, one at a time</h2>
+    <p>Two of the proved results are small enough to play with directly.</p>
+  </div>
+
+  <section class="device theory">
+    <div class="panel">
+      <div class="screen-head"><span class="t">How large the gap gets</span><a class="label" href="../paper/main.pdf">Planar family</a></div>
+      <p class="panel-p">In the plane, with N points in √N equal lists, the unique best k-means index must open half its lists plus one to answer every query. A second partition with the same list sizes opens one. Lean checks the exact counts.</p>
+      <div class="field">
+        <div class="field-head"><label for="gapK">Database size N</label><span class="num" id="gapNVal">4,096</span></div>
+        <input type="range" id="gapK" min="2" max="15" step="1" value="6">
+      </div>
+      <div class="gap-read">
+        <div><div class="label">Best k-means</div><div class="num gap-big" id="gapA">2,176</div><div class="gap-sub" id="gapAs">33 of 64 lists</div></div>
+        <div><div class="label">Same-size alternative</div><div class="num gap-big" id="gapB">128</div><div class="gap-sub" id="gapBs">1 of 64 lists</div></div>
+        <div><div class="label">Ratio</div><div class="num gap-big accent" id="gapR">17×</div><div class="gap-sub">1 + √N / 4</div></div>
+      </div>
+      <div class="glass wide"><canvas id="cvGap" aria-label="Work ratio against database size"></canvas></div>
+      <div class="legend"><span><i class="t"></i>Proved gap, reached</span><span><i class="u"></i>Upper bound for any two balanced indexes, 1 + √N / 2</span></div>
+    </div>
+
+    <div class="panel">
+      <div class="screen-head"><span class="t">Lower loss, worse search</span><a class="label" href="../paper/main.pdf">Four points</a></div>
+      <p class="panel-p">Store 0, 4, 8 and 10 in two lists, [0, 4] and [8, 10]. One k-means update moves the representatives from 4 and 8 to the list means, 2 and 9, and halves the loss. Queries between 5.5 and 6 now open the wrong list.</p>
+      <div class="field">
+        <div class="field-head"><label for="fourQ">Query</label><span class="num" id="fourQVal">5.75</span></div>
+        <input type="range" id="fourQ" min="3" max="9" step="0.05" value="5.75">
+      </div>
+      <div class="glass wide four"><canvas id="cvFour" aria-label="Four-point example before and after a k-means update"></canvas></div>
+      <div class="four-read">
+        <div><div class="label">Before · loss 20</div><div id="fourB" class="four-res"></div></div>
+        <div><div class="label">After · loss 10</div><div id="fourA" class="four-res"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="notes">
+    <div>
+      <h2>Reading the screens</h2>
+      <p>Grey dots are stored vectors. Thin lines split the plane by which list a router opens first. Both screens use <b>the same lists</b>: only the representatives differ, which is the router-only fix from the proofs.</p>
+      <p>The crosshair is a query and the green ring is its nearest neighbour. Shaded points belong to lists opened before the neighbour's list, in the numbered order. Click to pin a query.</p>
+    </div>
+    <div>
+      <h2>Why it matters</h2>
+      <p>Standard IVF indexes, such as Faiss's, route by centroid, and it is natural to assume that lower k-means loss means cheaper search. The proofs show that assumption can fail by a factor of order √N. The benchmarks show that at high recall, most of the scanning goes to lists that hold none of the answers.</p>
+      <p>Whether the remaining savings are easier to find in the router or in the partition is open. We tested routers on fixed lists; a partition trained on query neighbours is still untested.</p>
+    </div>
+    <div>
+      <h2>On real embeddings</h2>
+      <p>Distance evaluations per query at 95% recall@10, one million vectors in 1,000 lists. The oracle shows the headroom; the routers we trained did not recover it.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Workload</th><th>Centroids</th><th>Oracle</th><th>Best retrained</th></tr></thead>
+          <tbody>
+            <tr><td>DEEP</td><td>19,932</td><td>6,043</td><td>19,988</td></tr>
+            <tr><td>Text-to-Image</td><td>34,529</td><td>5,774</td><td>35,753</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <footer>Everything runs in your browser. Lloyd's algorithm starts from k random data points; empty lists are reseeded from the largest list. Tips include the list's centroid; farthest points add the m−1 members farthest from what is already chosen. The oracle is told which lists hold the true neighbours and opens them most neighbours first; like the centroids, and like the benchmark oracle, it is charged one routing score per list.</footer>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = (id) => document.getElementById(id);
+const fmt = (v) => Math.round(v).toLocaleString("en-US");
+
+/* ---------- randomness ---------- */
+function rng32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function gauss(r) { let u = 0; while (u === 0) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); }
+
+/* ---------- shapes: each returns a sampler with fixed parameters ---------- */
+function makeShape(shape, r) {
+  if (shape === "blobs") {
+    const G = 10, c = [];
+    let tot = 0;
+    for (let g = 0; g < G; g++) { const w = 1 / (g + 1); tot += w; c.push({ x: r() * 2 - 1, y: r() * 2 - 1, s: 0.03 + 0.09 * r(), w }); }
+    return (q) => { let u = q() * tot, g = 0; while (u > c[g].w && g < G - 1) { u -= c[g].w; g++; } return [c[g].x + c[g].s * gauss(q), c[g].y + c[g].s * gauss(q)]; };
+  }
+  if (shape === "aniso") {
+    const G = 7, c = [];
+    for (let g = 0; g < G; g++) c.push({ x: r() * 1.6 - 0.8, y: r() * 1.6 - 0.8, a: r() * Math.PI, s1: 0.08 + 0.22 * r(), s2: 0.012 + 0.035 * r() });
+    return (q) => { const g = c[(q() * G) | 0], u = gauss(q) * g.s1, v = gauss(q) * g.s2, co = Math.cos(g.a), si = Math.sin(g.a); return [g.x + u * co - v * si, g.y + u * si + v * co]; };
+  }
+  if (shape === "moons") {
+    return (q) => { const t = Math.PI * q(); const m = q() < 0.5; let x = m ? Math.cos(t) : 1 - Math.cos(t), y = m ? Math.sin(t) : 0.5 - Math.sin(t); return [(x - 0.5) * 0.9 + 0.07 * gauss(q), (y - 0.25) * 0.9 + 0.07 * gauss(q)]; };
+  }
+  if (shape === "rings") {
+    const R = [0.3, 0.65, 1.0], tot = 1.95;
+    return (q) => { let u = q() * tot, i = 0; while (u > R[i] && i < 2) { u -= R[i]; i++; } const a = q() * 2 * Math.PI, rr = R[i] + 0.035 * gauss(q); return [rr * Math.cos(a), rr * Math.sin(a)]; };
+  }
+  if (shape === "spiral") {
+    const rot = r() * Math.PI * 2;
+    return (q) => { const arm = (q() * 3) | 0, t = Math.pow(q(), 0.75), a = rot + arm * 2 * Math.PI / 3 + t * 3 * Math.PI, rr = 0.08 + 0.92 * t, s = 0.025 + 0.04 * t; return [rr * Math.cos(a) + s * gauss(q), rr * Math.sin(a) + s * gauss(q)]; };
+  }
+  return (q) => [q() * 2 - 1, q() * 2 - 1];
+}
+
+/* ---------- state ----------
+   Two independent state components, each changed only by its own functions:
+     training: RUNNING while run() trains Lloyd's iterations one frame at a time, then DONE.
+               runId cancels an older run when a new one starts.
+     playback: PLAYING while a timer advances the shown iteration, else PAUSED.
+   Everything else in S is data (points, queries, per-iteration results) or view selection
+   (shown iteration, pinned or hovered query). baseStale marks the cached canvas layers. */
+const Training = Object.freeze({ RUNNING: "running", DONE: "done" });
+const Playback = Object.freeze({ PAUSED: "paused", PLAYING: "playing" });
+const S = {
+  xs: null, ys: null, n: 0, qx: null, qy: null, Q: 0, K: 10, truth: null,
+  k: 64, T: 12, m: 4, tipKind: "far", target: 0.95, line: false,
+  hist: [], cur: 0, view: null,
+  training: Training.DONE, runId: 0, lastMs: 0,
+  playback: Playback.PAUSED, timer: 0,
+  pin: null, hover: null, example: -1,
+  members: null, membersIter: -1, baseStale: true,
+};
+
+function readControls() {
+  const nRaw = Math.pow(10, +$("nLog").value);
+  S.nWanted = Math.max(2000, Math.round(nRaw / 100) * 100);
+  S.shape = $("shape").value;
+  S.line = S.shape === "line";
+  S.seed = Math.max(0, Math.floor(+$("seed").value || 0));
+  S.qmode = $("qmode").value;
+  S.Q = +$("qN").value;
+  S.kWanted = Math.pow(2, +$("kLog").value);
+  S.T = +$("iters").value;
+  S.m = +$("m").value;
+  S.tipKind = $("tipKind").value;
+  S.target = +$("target").value / 100;
+  S.Kwanted = $("k10").getAttribute("aria-pressed") === "true" ? 10 : 1;
+}
+
+function paintRange(el) {
+  const p = ((+el.value - +el.min) / (+el.max - +el.min)) * 100;
+  el.style.setProperty("--p", p + "%");
+}
+function syncLabels() {
+  $("nVal").textContent = fmt(S.line ? S.n || S.nWanted : S.nWanted);
+  $("qVal").textContent = S.line ? fmt(S.Q) : fmt(S.Q);
+  $("kVal").textContent = S.line ? Math.min(S.kWanted, 16) : S.kWanted;
+  $("itersVal").textContent = S.T;
+  $("mVal").textContent = S.m;
+  $("targetVal").textContent = Math.round(S.target * 100) + "%";
+  $("tipLabel").textContent = (S.tipKind === "far" ? "Farthest-point" : "Sub-centroid") + " tips · m = " + S.m;
+  $("qmode").disabled = S.line;
+  $("k10").disabled = S.line;
+  const k10 = S.line ? false : S.Kwanted === 10;
+  $("k1").setAttribute("aria-pressed", String(!k10));
+  $("k10").setAttribute("aria-pressed", String(k10));
+  document.querySelectorAll('input[type="range"]').forEach(paintRange);
+}
+
+/* ---------- data ---------- */
+function buildData() {
+  const r = rng32(S.seed * 7919 + 17);
+  if (S.line) {
+    const k = Math.max(2, Math.min(S.kWanted, 16));
+    const B = Math.max(40, Math.min(1500, Math.floor(S.nWanted / k)));
+    const n = k * B, sy = 0.1 * k;
+    const xs = new Float64Array(n), ys = new Float64Array(n);
+    const init = { cx: new Float64Array(k), cy: new Float64Array(k) };
+    for (let i = 0; i < k; i++) {
+      const a = i === 0 ? 0 : 6 * k + i;
+      for (let t = 0; t < B; t++) {
+        const j = i * B + t;
+        xs[j] = a + 0.12 * r(); ys[j] = sy * gauss(r);
+        if (i === 0 && t === B - 1) { xs[j] = 2 * k; ys[j] = 0; } // the tip z = 2k
+        init.cx[i] += xs[j] / B; init.cy[i] += ys[j] / B;
+      }
+    }
+    const Q = S.Q, qx = new Float64Array(Q), qy = new Float64Array(Q);
+    for (let i = 0; i < Q; i++) { qx[i] = 15 * k / 4 + r() * (k / 8); qy[i] = sy * gauss(r); }
+    Object.assign(S, { xs, ys, n, qx, qy, k, K: 1, init });
+    return;
+  }
+  const sampler = makeShape(S.shape, r);
+  const dr = rng32(S.seed * 104729 + 3), qr = rng32(S.seed * 1299709 + 11);
+  const n = S.nWanted, xs = new Float64Array(n), ys = new Float64Array(n);
+  for (let i = 0; i < n; i++) { const p = sampler(dr); xs[i] = p[0]; ys[i] = p[1]; }
+  const Q = S.Q, qx = new Float64Array(Q), qy = new Float64Array(Q);
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (let i = 0; i < n; i++) { x0 = Math.min(x0, xs[i]); x1 = Math.max(x1, xs[i]); y0 = Math.min(y0, ys[i]); y1 = Math.max(y1, ys[i]); }
+  for (let i = 0; i < Q; i++) {
+    if (S.qmode === "held") { const p = sampler(qr); qx[i] = p[0]; qy[i] = p[1]; }
+    else if (S.qmode === "between") {
+      const a = (qr() * n) | 0, b = (qr() * n) | 0;
+      qx[i] = (xs[a] + xs[b]) / 2 + 0.02 * gauss(qr); qy[i] = (ys[a] + ys[b]) / 2 + 0.02 * gauss(qr);
+    } else { qx[i] = x0 + qr() * (x1 - x0); qy[i] = y0 + qr() * (y1 - y0); }
+  }
+  const k = Math.min(S.kWanted, Math.floor(n / 8));
+  const init = { cx: new Float64Array(k), cy: new Float64Array(k) };
+  const ir = rng32(S.seed * 31 + 5), used = new Set();
+  for (let c = 0; c < k; c++) { let j; do { j = (ir() * n) | 0; } while (used.has(j)); used.add(j); init.cx[c] = xs[j]; init.cy[c] = ys[j]; }
+  Object.assign(S, { xs, ys, n, qx, qy, k, K: S.Kwanted, init });
+}
+
+function computeTruth() {
+  const { xs, ys, n, qx, qy, Q, K } = S, truth = new Int32Array(Q * K);
+  const bd = new Float64Array(K), bi = new Int32Array(K);
+  for (let q = 0; q < Q; q++) {
+    bd.fill(Infinity); bi.fill(-1);
+    const x = qx[q], y = qy[q];
+    for (let i = 0; i < n; i++) {
+      const dx = xs[i] - x, dy = ys[i] - y, d = dx * dx + dy * dy;
+      if (d < bd[K - 1]) { let j = K - 1; while (j > 0 && bd[j - 1] > d) { bd[j] = bd[j - 1]; bi[j] = bi[j - 1]; j--; } bd[j] = d; bi[j] = i; }
+    }
+    truth.set(bi, q * K);
+  }
+  S.truth = truth;
+}
+
+function computeView() {
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  const take = (x, y) => { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; };
+  for (let i = 0; i < S.n; i++) take(S.xs[i], S.ys[i]);
+  for (let i = 0; i < S.Q; i++) take(S.qx[i], S.qy[i]);
+  let w = x1 - x0, h = y1 - y0;
+  if (h < w * 0.4) { const c = (y0 + y1) / 2; h = w * 0.4; y0 = c - h / 2; y1 = c + h / 2; }
+  if (w < h * 0.4) { const c = (x0 + x1) / 2; w = h * 0.4; x0 = c - w / 2; x1 = c + w / 2; }
+  S.view = { x0, x1, y0, y1 };
+}
+
+/* ---------- Lloyd ---------- */
+function assign(cx, cy, k) {
+  const { xs, ys, n } = S, owner = new Int32Array(n), sizes = new Int32Array(k);
+  let sse = 0;
+  for (let i = 0; i < n; i++) {
+    const x = xs[i], y = ys[i]; let b = 0, bd = Infinity;
+    for (let c = 0; c < k; c++) { const dx = cx[c] - x, dy = cy[c] - y, d = dx * dx + dy * dy; if (d < bd) { bd = d; b = c; } }
+    owner[i] = b; sizes[b]++; sse += bd;
+  }
+  return { owner, sizes, sse: sse / n };
+}
+function update(st, k, r) {
+  const { xs, ys, n } = S, sx = new Float64Array(k), sy = new Float64Array(k);
+  for (let i = 0; i < n; i++) { sx[st.owner[i]] += xs[i]; sy[st.owner[i]] += ys[i]; }
+  const cx = new Float64Array(k), cy = new Float64Array(k);
+  let big = 0; for (let c = 1; c < k; c++) if (st.sizes[c] > st.sizes[big]) big = c;
+  for (let c = 0; c < k; c++) {
+    if (st.sizes[c] > 0) { cx[c] = sx[c] / st.sizes[c]; cy[c] = sy[c] / st.sizes[c]; }
+    else { // reseed beside a random member of the largest list
+      let j; do { j = (r() * n) | 0; } while (st.owner[j] !== big);
+      cx[c] = xs[j] + 1e-4 * gauss(r); cy[c] = ys[j] + 1e-4 * gauss(r);
+    }
+  }
+  return { cx, cy };
+}
+
+/* ---------- routers ---------- */
+function buildMembers(st, k) {
+  const start = new Int32Array(k + 1), ids = new Int32Array(S.n);
+  for (let c = 0; c < k; c++) start[c + 1] = start[c] + st.sizes[c];
+  const fill = start.slice(0, k);
+  for (let i = 0; i < S.n; i++) ids[fill[st.owner[i]]++] = i;
+  return { start, ids };
+}
+function buildTips(st, k, mem) {
+  const { xs, ys } = S, m = S.m, tx = [], ty = [], tl = [];
+  for (let c = 0; c < k; c++) {
+    const a = mem.start[c], b = mem.start[c + 1], len = b - a;
+    const px = [st.cx[c]], py = [st.cy[c]];
+    if (len > 0 && m > 1) {
+      const d2 = new Float64Array(len);
+      for (let j = 0; j < len; j++) { const i = mem.ids[a + j], dx = xs[i] - px[0], dy = ys[i] - py[0]; d2[j] = dx * dx + dy * dy; }
+      for (let t = 1; t < Math.min(m, len + 1); t++) {
+        let bj = 0; for (let j = 1; j < len; j++) if (d2[j] > d2[bj]) bj = j;
+        if (d2[bj] <= 0) break;
+        const i = mem.ids[a + bj]; px.push(xs[i]); py.push(ys[i]);
+        for (let j = 0; j < len; j++) { const ii = mem.ids[a + j], dx = xs[ii] - xs[i], dy = ys[ii] - ys[i], d = dx * dx + dy * dy; if (d < d2[j]) d2[j] = d; }
+      }
+      if (S.tipKind === "sub" && px.length > 1) { // m centers fitted inside the list, seeded by the picks above
+        const mm = px.length, ax = new Float64Array(mm), ay = new Float64Array(mm), cnt = new Int32Array(mm);
+        for (let it = 0; it < 6; it++) {
+          ax.fill(0); ay.fill(0); cnt.fill(0);
+          for (let j = 0; j < len; j++) {
+            const i = mem.ids[a + j]; let bt = 0, bd = Infinity;
+            for (let t = 0; t < mm; t++) { const dx = xs[i] - px[t], dy = ys[i] - py[t], d = dx * dx + dy * dy; if (d < bd) { bd = d; bt = t; } }
+            ax[bt] += xs[i]; ay[bt] += ys[i]; cnt[bt]++;
+          }
+          for (let t = 0; t < mm; t++) if (cnt[t]) { px[t] = ax[t] / cnt[t]; py[t] = ay[t] / cnt[t]; }
+        }
+      }
+    }
+    for (let t = 0; t < px.length; t++) { tx.push(px[t]); ty.push(py[t]); tl.push(c); }
+  }
+  return { x: Float64Array.from(tx), y: Float64Array.from(ty), l: Int32Array.from(tl) };
+}
+function scoreLists(x, y, rx, ry, rl, k, out) {
+  out.fill(-Infinity);
+  for (let t = 0; t < rx.length; t++) {
+    const dx = rx[t] - x, dy = ry[t] - y, s = -(dx * dx + dy * dy), c = rl ? rl[t] : t;
+    if (s > out[c]) out[c] = s;
+  }
+  return out;
+}
+function curveFor(st, k, rx, ry, rl) {
+  const { Q, K, truth, qx, qy } = S, sizes = st.sizes;
+  const hist = new Float64Array(k), work = new Float64Array(k);
+  const sc = new Float64Array(k), idx = new Int32Array(k), pos = new Int32Array(k);
+  for (let q = 0; q < Q; q++) {
+    scoreLists(qx[q], qy[q], rx, ry, rl, k, sc);
+    for (let c = 0; c < k; c++) idx[c] = c;
+    idx.sort((a, b) => sc[b] - sc[a]);
+    let cum = 0;
+    for (let j = 0; j < k; j++) { pos[idx[j]] = j; cum += sizes[idx[j]]; work[j] += cum; }
+    for (let t = 0; t < K; t++) hist[pos[st.owner[truth[q * K + t]]]]++;
+  }
+  const recall = new Float64Array(k), w = new Float64Array(k);
+  let acc = 0;
+  for (let j = 0; j < k; j++) { acc += hist[j]; recall[j] = acc / (Q * K); w[j] = rx.length + work[j] / Q; }
+  return { recall, work: w, ntips: rx.length };
+}
+function oracleCurve(st, k) {
+  const { Q, K, truth } = S, sizes = st.sizes;
+  const rec = new Float64Array(k), work = new Float64Array(k);
+  for (let q = 0; q < Q; q++) {
+    const cnt = new Map();
+    for (let t = 0; t < K; t++) { const c = st.owner[truth[q * K + t]]; cnt.set(c, (cnt.get(c) || 0) + 1); }
+    const order = [...cnt.entries()].sort((a, b) => b[1] - a[1] || sizes[a[0]] - sizes[b[0]]);
+    let got = 0, cum = 0;
+    for (let j = 0; j < k; j++) {
+      if (j < order.length) { got += order[j][1]; cum += sizes[order[j][0]]; }
+      rec[j] += got; work[j] += cum;
+    }
+  }
+  // Charge the k routing scores, as the benchmark oracle was charged, so both use one convention.
+  for (let j = 0; j < k; j++) { rec[j] /= Q * K; work[j] = k + work[j] / Q; }
+  return { recall: rec, work, ntips: k };
+}
+function evaluate(st) {
+  const k = S.k, mem = buildMembers(st, k);
+  st.tips = buildTips(st, k, mem);
+  st.cent = curveFor(st, k, st.cx, st.cy, null);
+  st.tip = curveFor(st, k, st.tips.x, st.tips.y, st.tips.l);
+  st.orac = oracleCurve(st, k);
+}
+function atTarget(cv) {
+  for (let j = 0; j < cv.recall.length; j++) if (cv.recall[j] >= S.target - 1e-12) return { p: j + 1, work: cv.work[j], recall: cv.recall[j] };
+  const j = cv.recall.length - 1; return { p: j + 1, work: cv.work[j], recall: cv.recall[j] };
+}
+
+/* ---------- pipeline ---------- */
+const nextFrame = () => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0)));
+async function run(replay) {
+  const runId = ++S.runId;
+  stopPlay();
+  readControls();
+  const t0 = performance.now();
+  buildData(); computeTruth(); computeView();
+  syncLabels();
+  S.hist = []; S.pin = null; S.hover = null; S.membersIter = -1; S.training = Training.RUNNING;
+  const r = rng32(S.seed * 4099 + 1);
+  let c = { cx: S.init.cx, cy: S.init.cy };
+  const iterEl = $("iterRange");
+  iterEl.max = S.T;
+  for (let t = 0; t <= S.T; t++) {
+    const a = assign(c.cx, c.cy, S.k);
+    const st = { cx: c.cx, cy: c.cy, owner: a.owner, sizes: a.sizes, sse: a.sse };
+    evaluate(st);
+    S.hist.push(st);
+    if (t < S.T) c = update(st, S.k, r);
+    if (replay || t === 0) { setIter(t); }
+    status(`Training · iteration ${t} of ${S.T}`);
+    await nextFrame();
+    if (runId !== S.runId) return;  // a newer run took over
+  }
+  S.training = Training.DONE;
+  S.lastMs = performance.now() - t0;
+  if (replay) { setIter(0); startPlay(); } else setIter(S.T);
+  status();
+}
+function reevaluate() { // router or target change: lists stay, representatives change
+  readControls(); syncLabels();
+  if (S.training === Training.RUNNING) return run(false);
+  for (const st of S.hist) evaluate(st);
+  S.membersIter = -1;
+  setIter(S.cur, true);
+}
+function status(msg) {
+  if (msg) { $("status").textContent = msg; return; }
+  const parts = [`${fmt(S.n)} points`, `${fmt(S.Q)} queries`, `k = ${S.k} lists`, `recall@${S.K}`, `${S.T} Lloyd iterations`, `${Math.round(S.lastMs)} ms`];
+  if (S.line) parts.splice(3, 1, "recall@1, as in the theorem", "lists start at the certified optimum");
+  $("status").textContent = parts.join("  ·  ");
+}
+
+/* ---------- playback ---------- */
+function setIter(t, force) {
+  t = Math.max(0, Math.min(t, S.hist.length - 1));
+  if (t === S.cur && !force && S.membersIter === t) { renderAll(); return; }
+  S.cur = t;
+  $("iterRange").value = t;
+  paintRange($("iterRange"));
+  $("iterLabel").textContent = `iteration ${t} / ${S.T}`;
+  const st = S.hist[t];
+  S.members = buildMembers(st, S.k); S.membersIter = t;
+  pickExample(st);
+  S.baseStale = true;
+  renderAll();
+}
+function startPlay() {
+  S.playback = Playback.PLAYING; setPauseIcon();
+  clearInterval(S.timer);
+  S.timer = setInterval(() => {
+    // At the last trained iteration: wait for more if training is still running, else stop.
+    if (S.cur >= S.hist.length - 1) { if (S.training === Training.DONE) stopPlay(); return; }
+    setIter(S.cur + 1);
+  }, 420);
+}
+function stopPlay() { S.playback = Playback.PAUSED; clearInterval(S.timer); setPauseIcon(); }
+function setPauseIcon() {
+  $("pauseIcon").innerHTML = S.playback === Playback.PLAYING
+    ? '<path d="M6.5 4.5h4v15h-4zM13.5 4.5h4v15h-4z" fill="currentColor"/>'
+    : '<path d="M7 4.5v15l12.5-7.5z" fill="currentColor"/>';
+}
+
+/* ---------- per-query probing ---------- */
+function pickExample(st) {
+  // the workload query where centroids need the most extra probes over tips
+  const k = S.k, a = new Float64Array(k), b = new Float64Array(k);
+  let best = -Infinity, bi = 0;
+  for (let q = 0; q < S.Q; q++) {
+    const info = probe(S.qx[q], S.qy[q], st, a, b, S.truth[q * S.K]);
+    const gain = info.cent.rank - info.tip.rank + info.cent.rank * 1e-3;
+    if (gain > best) { best = gain; bi = q; }
+  }
+  S.example = bi;
+}
+function nearest(x, y) {
+  let b = 0, bd = Infinity;
+  for (let i = 0; i < S.n; i++) { const dx = S.xs[i] - x, dy = S.ys[i] - y, d = dx * dx + dy * dy; if (d < bd) { bd = d; b = i; } }
+  return b;
+}
+function probe(x, y, st, a, b, nn) {
+  const k = S.k;
+  if (nn == null) nn = nearest(x, y);
+  const L = st.owner[nn];
+  const one = (sc, ntips) => {
+    const s = sc[L]; const lists = [];
+    for (let c = 0; c < k; c++) if (sc[c] > s || c === L) lists.push(c);
+    lists.sort((u, v) => sc[v] - sc[u]);
+    let w = ntips; for (const c of lists) w += st.sizes[c];
+    return { rank: lists.length, lists, work: w };
+  };
+  scoreLists(x, y, st.cx, st.cy, null, k, a);
+  scoreLists(x, y, st.tips.x, st.tips.y, st.tips.l, k, b);
+  return { nn, L, cent: one(a, k), tip: one(b, st.tips.x.length) };
+}
+function currentQuery() {
+  if (S.hover) return { ...S.hover, kind: "Pointer" };
+  if (S.pin) return { ...S.pin, kind: "Pinned query" };
+  if (S.example >= 0) return { x: S.qx[S.example], y: S.qy[S.example], kind: "Example query" };
+  return null;
+}
+
+/* ---------- drawing ---------- */
+let TOK = {};
+function readTokens() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const n of ["screen", "ink", "ink-2", "rule", "cell", "pt", "accent", "green", "face"]) TOK[n] = cs.getPropertyValue("--" + n).trim();
+}
+function rgba(hex, a) {
+  const h = hex.replace("#", ""); const v = parseInt(h.length === 3 ? h.replace(/./g, "$&$&") : h, 16);
+  return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${a})`;
+}
+function fit(cv) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2), w = cv.clientWidth, h = cv.clientHeight;
+  const W = Math.max(1, Math.round(w * dpr)), H = Math.max(1, Math.round(h * dpr));
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; S.baseStale = true; }
+  return { W, H, dpr };
+}
+function xf(W, H) {
+  const v = S.view, pad = 0.06 * Math.min(W, H);
+  const s = Math.min((W - 2 * pad) / (v.x1 - v.x0), (H - 2 * pad) / (v.y1 - v.y0));
+  const ox = (W - s * (v.x1 - v.x0)) / 2, oy = (H - s * (v.y1 - v.y0)) / 2;
+  return { s, px: (x) => ox + (x - v.x0) * s, py: (y) => H - oy - (y - v.y0) * s, ix: (X) => v.x0 + (X - ox) / s, iy: (Y) => v.y0 + (H - oy - Y) / s };
+}
+const base = { C: document.createElement("canvas"), T: document.createElement("canvas") };
+function drawBase(which, cv) {
+  const { W, H, dpr } = fit(cv), off = base[which], st = S.hist[S.cur];
+  off.width = W; off.height = H;
+  const g = off.getContext("2d"), X = xf(W, H);
+  g.fillStyle = TOK.screen; g.fillRect(0, 0, W, H);
+  // routing cells: label grid at cell centres, edges where the first-opened list changes
+  const G = Math.max(60, Math.min(150, Math.round(W / (2.4 * dpr)))), cw = W / G, ch = H / G;
+  const lab = new Int32Array(G * G);
+  const rx = which === "C" ? st.cx : st.tips.x, ry = which === "C" ? st.cy : st.tips.y, rl = which === "C" ? null : st.tips.l;
+  for (let gy = 0; gy < G; gy++) for (let gx = 0; gx < G; gx++) {
+    const x = X.ix((gx + 0.5) * cw), y = X.iy((gy + 0.5) * ch);
+    let bt = 0, bd = Infinity;
+    for (let t = 0; t < rx.length; t++) { const dx = rx[t] - x, dy = ry[t] - y, d = dx * dx + dy * dy; if (d < bd) { bd = d; bt = t; } }
+    lab[gy * G + gx] = rl ? rl[bt] : bt;
+  }
+  g.strokeStyle = TOK.cell; g.lineWidth = Math.max(1, dpr); g.beginPath();
+  for (let gy = 0; gy < G; gy++) for (let gx = 0; gx < G; gx++) {
+    const l = lab[gy * G + gx];
+    if (gx + 1 < G && lab[gy * G + gx + 1] !== l) { g.moveTo((gx + 1) * cw, gy * ch); g.lineTo((gx + 1) * cw, (gy + 1) * ch); }
+    if (gy + 1 < G && lab[(gy + 1) * G + gx] !== l) { g.moveTo(gx * cw, (gy + 1) * ch); g.lineTo((gx + 1) * cw, (gy + 1) * ch); }
+  }
+  g.stroke();
+  // points
+  const ps = Math.max(1.2, 1.5 * dpr), a = Math.max(0.2, Math.min(0.75, 3000 / S.n));
+  g.fillStyle = rgba(TOK.pt, a);
+  for (let i = 0; i < S.n; i++) g.fillRect(X.px(S.xs[i]) - ps / 2, X.py(S.ys[i]) - ps / 2, ps, ps);
+  // representatives
+  const rr = (S.k > 128 ? 2.2 : 3) * dpr;
+  if (which === "C") {
+    g.strokeStyle = TOK.ink; g.fillStyle = TOK.screen; g.lineWidth = 1.3 * dpr;
+    for (let c = 0; c < S.k; c++) { g.beginPath(); g.arc(X.px(st.cx[c]), X.py(st.cy[c]), rr, 0, 7); g.fill(); g.stroke(); }
+  } else {
+    g.fillStyle = TOK.accent;
+    const tt = rr * 1.5;
+    for (let t = 0; t < st.tips.x.length; t++) g.fillRect(X.px(st.tips.x[t]) - tt / 2, X.py(st.tips.y[t]) - tt / 2, tt, tt);
+  }
+}
+function drawScreen(which, cv, info, q) {
+  const { W, H, dpr } = fit(cv), g = cv.getContext("2d"), X = xf(W, H), st = S.hist[S.cur];
+  g.drawImage(base[which], 0, 0);
+  if (!info) return;
+  const r = which === "C" ? info.cent : info.tip, col = which === "C" ? TOK.ink : TOK.accent;
+  const ps = Math.max(1.6, 2 * dpr), mem = S.members;
+  for (const c of r.lists) {
+    g.fillStyle = rgba(col, c === info.L ? 0.85 : 0.42);
+    for (let j = mem.start[c]; j < mem.start[c + 1]; j++) { const i = mem.ids[j]; g.fillRect(X.px(S.xs[i]) - ps / 2, X.py(S.ys[i]) - ps / 2, ps, ps); }
+  }
+  // probe order labels
+  if (r.lists.length <= 24) {
+    g.font = `500 ${10 * dpr}px DM Mono, ui-monospace, monospace`; g.textAlign = "center"; g.textBaseline = "middle";
+    r.lists.forEach((c, j) => {
+      const x = X.px(st.cx[c]), y = X.py(st.cy[c]) - 11 * dpr;
+      const txt = String(j + 1), w = g.measureText(txt).width + 6 * dpr;
+      g.fillStyle = c === info.L ? TOK.green : col; g.beginPath(); g.roundRect ? g.roundRect(x - w / 2, y - 7 * dpr, w, 14 * dpr, 4 * dpr) : g.rect(x - w / 2, y - 7 * dpr, w, 14 * dpr); g.fill();
+      g.fillStyle = TOK.screen; g.fillText(txt, x, y + 0.5 * dpr);
+    });
+  }
+  // query, answer, link
+  const qx = X.px(q.x), qy = X.py(q.y), nx = X.px(S.xs[info.nn]), ny = X.py(S.ys[info.nn]);
+  g.strokeStyle = TOK.green; g.lineWidth = 1.2 * dpr; g.setLineDash([3 * dpr, 3 * dpr]);
+  g.beginPath(); g.moveTo(qx, qy); g.lineTo(nx, ny); g.stroke(); g.setLineDash([]);
+  g.lineWidth = 2 * dpr; g.beginPath(); g.arc(nx, ny, 6 * dpr, 0, 7); g.stroke();
+  g.strokeStyle = TOK.ink; g.lineWidth = 1.5 * dpr; const s = 8 * dpr;
+  g.beginPath(); g.moveTo(qx - s, qy); g.lineTo(qx - 2.5 * dpr, qy); g.moveTo(qx + 2.5 * dpr, qy); g.lineTo(qx + s, qy);
+  g.moveTo(qx, qy - s); g.lineTo(qx, qy - 2.5 * dpr); g.moveTo(qx, qy + 2.5 * dpr); g.lineTo(qx, qy + s); g.stroke();
+}
+
+function axes(g, W, H, dpr, pad, xt, yt, xs, ys) {
+  g.font = `400 ${10 * dpr}px DM Mono, ui-monospace, monospace`;
+  g.strokeStyle = TOK.cell; g.fillStyle = TOK["ink-2"]; g.lineWidth = 1 * dpr;
+  g.textAlign = "right"; g.textBaseline = "middle";
+  for (const [v, lab] of yt) { const y = ys(v); g.beginPath(); g.moveTo(pad.l, y); g.lineTo(W - pad.r, y); g.stroke(); g.fillText(lab, pad.l - 6 * dpr, y); }
+  g.textAlign = "center"; g.textBaseline = "top";
+  for (const [v, lab] of xt) { const x = xs(v); g.beginPath(); g.moveTo(x, pad.t); g.lineTo(x, H - pad.b); g.stroke(); g.fillText(lab, x, H - pad.b + 6 * dpr); }
+}
+function short(v) { return v >= 1e6 ? (v / 1e6) + "M" : v >= 1000 ? (v / 1000) + "k" : String(v); }
+function drawChart() {
+  const cv = $("cvChart"), { W, H, dpr } = fit(cv), g = cv.getContext("2d"), st = S.hist[S.cur];
+  g.fillStyle = TOK.screen; g.fillRect(0, 0, W, H);
+  if (!st) return;
+  const pad = { l: 40 * dpr, r: 14 * dpr, t: 14 * dpr, b: 40 * dpr };
+  const curves = [[st.orac, TOK.green, true], [st.cent, TOK.ink, false], [st.tip, TOK.accent, false]];
+  let lo = Infinity; for (const [c] of curves) for (const w of c.work) if (w > 0 && w < lo) lo = w;
+  const hi = S.n + st.tips.x.length;
+  const l0 = Math.log10(Math.max(1, lo * 0.8)), l1 = Math.log10(hi * 1.05);
+  const xs = (v) => pad.l + ((Math.log10(Math.max(v, 1)) - l0) / (l1 - l0)) * (W - pad.l - pad.r);
+  let ymin = Math.min(S.target - 0.05, ...curves.map(([c]) => c.recall[0]));
+  ymin = Math.max(0, Math.floor(ymin * 10) / 10);
+  const ys = (v) => H - pad.b - ((v - ymin) / (1 - ymin)) * (H - pad.t - pad.b);
+  const yt = []; const ystep = 1 - ymin > 0.5 ? 0.25 : 1 - ymin > 0.25 ? 0.1 : 0.05;
+  for (let v = 1; v >= ymin - 1e-9; v -= ystep) yt.push([v, v >= 1 ? "1" : v.toFixed(2).replace(/^0/, "")]);
+  const xt = [];
+  for (let e = Math.floor(l0); e <= Math.ceil(l1); e++) for (const m of [1, 2, 5]) { const v = m * Math.pow(10, e), lv = Math.log10(v); if (lv >= l0 && lv <= l1) xt.push([v, short(v)]); }
+  axes(g, W, H, dpr, pad, xt.length > 7 ? xt.filter(([v]) => String(v)[0] !== "2") : xt, yt, xs, ys);
+  g.fillStyle = TOK["ink-2"]; g.textAlign = "center"; g.textBaseline = "bottom";
+  g.fillText("distances per query, log scale", (pad.l + W - pad.r) / 2, H - 4 * dpr);
+  // target
+  const ty = ys(S.target);
+  g.strokeStyle = TOK["ink-2"]; g.setLineDash([4 * dpr, 4 * dpr]); g.lineWidth = 1 * dpr;
+  g.beginPath(); g.moveTo(pad.l, ty); g.lineTo(W - pad.r, ty); g.stroke(); g.setLineDash([]);
+  g.textAlign = "right"; g.textBaseline = "top"; g.fillText(`target ${Math.round(S.target * 100)}%`, W - pad.r - 4 * dpr, ty + 4 * dpr);
+  for (const [c, col, dash] of curves) {
+    g.strokeStyle = col; g.lineWidth = (dash ? 1.6 : 2) * dpr; g.setLineDash(dash ? [5 * dpr, 4 * dpr] : []);
+    g.beginPath();
+    for (let j = 0; j < c.work.length; j++) { const x = xs(c.work[j]), y = ys(c.recall[j]); j ? g.lineTo(x, y) : g.moveTo(x, y); if (c.recall[j] >= 1 && dash) break; }
+    g.stroke(); g.setLineDash([]);
+    const a = atTarget(c);
+    g.fillStyle = TOK.screen; g.lineWidth = 2 * dpr; g.beginPath(); g.arc(xs(a.work), ys(a.recall), 4.5 * dpr, 0, 7); g.fill(); g.stroke();
+  }
+}
+function drawSpark(cv, series, yFmt) {
+  const { W, H, dpr } = fit(cv), g = cv.getContext("2d");
+  g.fillStyle = TOK.screen; g.fillRect(0, 0, W, H);
+  const N = S.T; if (!S.hist.length) return;
+  const pad = { l: 46 * dpr, r: 12 * dpr, t: 10 * dpr, b: 22 * dpr };
+  let lo = Infinity, hi = -Infinity;
+  for (const s of series) for (const v of s.v) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+  if (hi - lo < 1e-12) { hi = lo + 1; }
+  const m = (hi - lo) * 0.1; lo -= m; hi += m;
+  const xs = (t) => pad.l + (N ? t / N : 0) * (W - pad.l - pad.r), ys = (v) => H - pad.b - ((v - lo) / (hi - lo)) * (H - pad.t - pad.b);
+  const xt = []; const step = N > 15 ? 5 : N > 6 ? 2 : 1; for (let t = 0; t <= N; t += step) xt.push([t, String(t)]);
+  axes(g, W, H, dpr, pad, xt, [[lo + m, yFmt(lo + m)], [hi - m, yFmt(hi - m)]], xs, ys);
+  // current iteration
+  g.strokeStyle = TOK.rule; g.lineWidth = 6 * dpr; g.beginPath(); g.moveTo(xs(S.cur), pad.t); g.lineTo(xs(S.cur), H - pad.b); g.stroke();
+  for (const s of series) {
+    g.strokeStyle = s.c; g.lineWidth = 1.8 * dpr; g.beginPath();
+    s.v.forEach((v, t) => { const x = xs(t), y = ys(v); t ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke();
+    const v = s.v[S.cur]; if (v != null) { g.fillStyle = s.c; g.beginPath(); g.arc(xs(S.cur), ys(v), 3.5 * dpr, 0, 7); g.fill(); }
+  }
+}
+
+function meter(id, a, ref, k, cls) {
+  $(id).innerHTML = `${fmt(a.work)}<small>distances</small>`;
+  let d = "";
+  if (ref) { const pct = (a.work / ref.work - 1) * 100; d = `<span class="delta ${pct < -0.5 ? cls : ""}">${pct > 0 ? "+" : pct < 0 ? "−" : "±"}${Math.abs(pct).toFixed(1)}%</span>`; }
+  $(id + "s").innerHTML = `<span>${a.p} of ${k} lists</span><span>recall ${(a.recall * 100).toFixed(1)}%</span>${d}`;
+}
+function renderAll() {
+  const st = S.hist[S.cur]; if (!st) return;
+  if (S.baseStale) { drawBase("C", $("cvC")); drawBase("T", $("cvT")); S.baseStale = false; }
+  const q = currentQuery();
+  let info = null;
+  if (q) {
+    const a = new Float64Array(S.k), b = new Float64Array(S.k);
+    info = probe(q.x, q.y, st, a, b, q.kind === "Example query" ? S.truth[S.example * S.K] : null);
+  }
+  drawScreen("C", $("cvC"), info, q); drawScreen("T", $("cvT"), info, q);
+  if (info) {
+    $("pinLabel").textContent = q.kind;
+    const line = (r) => `Nearest neighbour found at probe <b>${r.rank}</b> of ${S.k} · <b>${fmt(r.work)}</b> distances`;
+    $("rC").innerHTML = line(info.cent);
+    $("rT").innerHTML = line(info.tip) + (info.tip.rank < info.cent.rank ? ` · <b>${info.cent.rank - info.tip.rank}</b> fewer lists` : "");
+  }
+  drawChart();
+  const c = atTarget(st.cent), t = atTarget(st.tip), o = atTarget(st.orac);
+  meter("mC", c, null, S.k, "");
+  meter("mT", t, c, S.k, "good");
+  meter("mO", o, c, S.k, "oracle");
+  const H = S.hist;
+  drawSpark($("cvLoss"), [{ v: H.map((h) => h.sse), c: TOK.ink }], (v) => v.toPrecision(2));
+  drawSpark($("cvWork"), [
+    { v: H.map((h) => atTarget(h.cent).work), c: TOK.ink },
+    { v: H.map((h) => atTarget(h.tip).work), c: TOK.accent },
+    { v: H.map((h) => atTarget(h.orac).work), c: TOK.green },
+  ], (v) => short(Math.round(v)));
+  const avoid = Math.max(0, (1 - o.work / c.work) * 100), tp = (t.work / c.work - 1) * 100;
+  const goal = `${Math.round(S.target * 100)}% recall@${S.K}`;
+  $("verdict").innerHTML = (S.line
+      ? `Centroids open <b>${c.p} of ${S.k}</b> lists to reach ${goal}, because the answer's list ranks last. `
+      : `To reach ${goal}, centroids compute <b>${fmt(c.work)}</b> distances per query. `)
+    + `An oracle that knows which lists hold the answers needs <b>${fmt(o.work)}</b>, an upper bound of <span class="hl num">${avoid.toFixed(0)}%</span> less work than the centroids. `
+    + `Tips on the same lists use <b>${fmt(t.work)}</b> (${tp <= 0 ? "−" : "+"}${Math.abs(tp).toFixed(0)}%${tp > 0 ? ", since every tip costs a distance" : ""}).`;
+  $("lossNow").textContent = "mse " + st.sse.toPrecision(3);
+  $("workNow").textContent = `${fmt(c.work)} · ${fmt(t.work)} · ${fmt(o.work)}`;
+}
+
+/* ---------- pointer ---------- */
+for (const id of ["cvC", "cvT"]) {
+  const cv = $(id);
+  const toData = (e) => { const rc = cv.getBoundingClientRect(), dpr = cv.width / rc.width, X = xf(cv.width, cv.height); return { x: X.ix((e.clientX - rc.left) * dpr), y: X.iy((e.clientY - rc.top) * dpr) }; };
+  let raf = 0;
+  cv.addEventListener("pointermove", (e) => { if (e.pointerType !== "mouse" || !S.view) return; S.hover = toData(e); if (!raf) raf = requestAnimationFrame(() => { raf = 0; renderAll(); }); });
+  cv.addEventListener("pointerleave", () => { S.hover = null; renderAll(); });
+  cv.addEventListener("pointerdown", (e) => { if (!S.view) return; S.pin = toData(e); S.hover = null; renderAll(); });
+}
+
+/* ---------- controls ---------- */
+let deb = 0;
+const rerun = () => { clearTimeout(deb); deb = setTimeout(() => run(false), 180); };
+const live = () => { readControls(); syncLabels(); };
+["nLog", "qN", "kLog", "iters"].forEach((id) => { $(id).addEventListener("input", live); $(id).addEventListener("change", rerun); });
+["shape", "qmode", "seed"].forEach((id) => $(id).addEventListener("change", () => { live(); rerun(); }));
+$("m").addEventListener("input", live); $("m").addEventListener("change", reevaluate);
+$("tipKind").addEventListener("change", reevaluate);
+$("target").addEventListener("input", () => { live(); renderAll(); });
+$("k1").addEventListener("click", () => { $("k1").setAttribute("aria-pressed", "true"); $("k10").setAttribute("aria-pressed", "false"); rerun(); });
+$("k10").addEventListener("click", () => { $("k10").setAttribute("aria-pressed", "true"); $("k1").setAttribute("aria-pressed", "false"); rerun(); });
+$("playBtn").addEventListener("click", () => run(true));
+$("pauseBtn").addEventListener("click", () => {
+  if (S.playback === Playback.PLAYING) { stopPlay(); return; }
+  if (S.cur >= S.hist.length - 1) setIter(0);
+  startPlay();
+});
+$("iterRange").addEventListener("input", (e) => { stopPlay(); setIter(+e.target.value); });
+
+/* ---------- guided presets ---------- */
+const TOURS = {
+  proof: { shape: "line", nLog: 4, kLog: 3, iters: 3, m: 2, tipKind: "far", target: 95, K: 1, qmode: "between",
+    cap: "<b>The line family from the proofs.</b> The lists are the unique global k-means optimum. Every query's nearest neighbour is the outlier on the left, and its list's mean ranks last, so centroids open all 8 lists. One extra stored point per list (m = 2) finds it in one probe, with the lists unchanged." },
+  between: { shape: "blobs", nLog: 4.3, kLog: 6, iters: 12, m: 4, tipKind: "far", target: 95, K: 10, qmode: "between",
+    cap: "<b>Queries that land between clusters</b>, like text queries searched against image embeddings. Most of the centroid work goes to lists that hold no answers. Compare the oracle meter with the centroid meter." },
+  like: { shape: "blobs", nLog: 4.3, kLog: 6, iters: 12, m: 4, tipKind: "far", target: 95, K: 10, qmode: "held",
+    cap: "<b>Queries drawn like the data.</b> Answers sit near the middle of their lists, so centroids do well and the gap shrinks. How much work is wasted depends on where queries land, which is why the benchmarks use real query sets." },
+  train: { shape: "aniso", nLog: 4.3, kLog: 6, iters: 25, m: 4, tipKind: "far", target: 95, K: 10, qmode: "between",
+    cap: "<b>Training against search.</b> Lloyd's loss falls at every iteration in the lower-left graph. Work at the target recall, in the lower-right graph, does not have to follow. Scrub the iterations to compare." },
+};
+function applyTour(name) {
+  const t = TOURS[name];
+  document.querySelectorAll(".chip").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tour === name)));
+  $("tourCap").innerHTML = t.cap;
+  $("shape").value = t.shape; $("nLog").value = t.nLog; $("kLog").value = t.kLog; $("iters").value = t.iters;
+  $("m").value = t.m; $("tipKind").value = t.tipKind; $("target").value = t.target; $("qmode").value = t.qmode;
+  $("k10").setAttribute("aria-pressed", String(t.K === 10)); $("k1").setAttribute("aria-pressed", String(t.K === 1));
+  clearTimeout(deb);
+  run(name === "train");
+}
+document.querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => applyTour(b.dataset.tour)));
+document.querySelectorAll(".deck select, .deck input, .deck button").forEach((el) =>
+  el.addEventListener(el.tagName === "BUTTON" ? "click" : "change", () => {
+    if (el.id === "playBtn") return;
+    document.querySelectorAll(".chip").forEach((b) => b.setAttribute("aria-pressed", "false"));
+  }));
+
+/* ---------- planar gap calculator ---------- */
+function drawGap() {
+  const v = +$("gapK").value, k = Math.pow(2, v), N = k * k, s = k / 2;
+  const A = k + (s + 1) * k, B = 2 * k, R = (s + 2) / 2;
+  $("gapNVal").textContent = fmt(N);
+  $("gapA").textContent = fmt(A); $("gapAs").textContent = `${fmt(s + 1)} of ${fmt(k)} lists`;
+  $("gapB").textContent = fmt(B); $("gapBs").textContent = `1 of ${fmt(k)} lists`;
+  $("gapR").textContent = (R < 100 ? R.toFixed(R % 1 ? 1 : 0) : fmt(R)) + "×";
+  paintRange($("gapK"));
+  const cv = $("cvGap"), { W, H, dpr } = fit(cv), g = cv.getContext("2d");
+  g.fillStyle = TOK.screen; g.fillRect(0, 0, W, H);
+  const pad = { l: 46 * dpr, r: 16 * dpr, t: 14 * dpr, b: 28 * dpr };
+  const lx0 = Math.log10(16), lx1 = Math.log10(Math.pow(4, 15)), ly0 = 0, ly1 = Math.log10(1 + Math.pow(2, 15) / 2) + 0.1;
+  const xs = (n) => pad.l + ((Math.log10(n) - lx0) / (lx1 - lx0)) * (W - pad.l - pad.r);
+  const ys = (r) => H - pad.b - ((Math.log10(r) - ly0) / (ly1 - ly0)) * (H - pad.t - pad.b);
+  axes(g, W, H, dpr, pad, [[100, "100"], [1e4, "10k"], [1e6, "1M"], [1e8, "100M"]], [[1, "1×"], [10, "10×"], [100, "100×"], [1000, "1k×"], [10000, "10k×"]], xs, ys);
+  const curve = (f) => { const pts = []; for (let e = lx0; e <= lx1 + 1e-9; e += (lx1 - lx0) / 120) { const n = Math.pow(10, e); pts.push([xs(n), ys(f(n))]); } return pts; };
+  const lo = curve((n) => 1 + Math.sqrt(n) / 4), up = curve((n) => 1 + Math.sqrt(n) / 2);
+  g.fillStyle = rgba(TOK.accent, 0.08); g.beginPath();
+  lo.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); [...up].reverse().forEach(([x, y]) => g.lineTo(x, y)); g.fill();
+  g.strokeStyle = TOK["ink-2"]; g.lineWidth = 1.5 * dpr; g.setLineDash([2 * dpr, 3 * dpr]); g.beginPath();
+  up.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); g.setLineDash([]);
+  g.strokeStyle = TOK.accent; g.lineWidth = 2.2 * dpr; g.beginPath();
+  lo.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke();
+  const mx = xs(N), my = ys(R);
+  g.strokeStyle = TOK.rule; g.lineWidth = 1 * dpr; g.beginPath(); g.moveTo(mx, my); g.lineTo(mx, H - pad.b); g.stroke();
+  g.fillStyle = TOK.screen; g.strokeStyle = TOK.accent; g.lineWidth = 2.2 * dpr; g.beginPath(); g.arc(mx, my, 5 * dpr, 0, 7); g.fill(); g.stroke();
+  g.font = `500 ${11 * dpr}px DM Mono, ui-monospace, monospace`; g.fillStyle = TOK.ink;
+  g.textAlign = mx > W * 0.7 ? "right" : "left"; g.textBaseline = "bottom";
+  g.fillText(`${$("gapR").textContent} at N = ${N < 1e6 ? fmt(N) : (N / 1e6).toFixed(N < 1e7 ? 1 : 0) + "M"}`, mx + (mx > W * 0.7 ? -9 : 9) * dpr, my - 6 * dpr);
+}
+$("gapK").addEventListener("input", drawGap);
+
+/* ---------- four-point example ---------- */
+function drawFour() {
+  const q = +$("fourQ").value;
+  $("fourQVal").textContent = q.toFixed(2);
+  paintRange($("fourQ"));
+  const P = [0, 4, 8, 10], lists = [[0, 4], [8, 10]];
+  const ans = P.reduce((b, p) => (Math.abs(p - q) < Math.abs(b - q) ? p : b), P[0]);
+  const rows = [{ c: [4, 8], el: "fourB" }, { c: [2, 9], el: "fourA" }];
+  const cv = $("cvFour"), { W, H, dpr } = fit(cv), g = cv.getContext("2d");
+  g.fillStyle = TOK.screen; g.fillRect(0, 0, W, H);
+  const pad = 22 * dpr, xs = (v) => pad + ((v + 0.5) / 11) * (W - 2 * pad);
+  g.font = `400 ${10 * dpr}px DM Mono, ui-monospace, monospace`; g.textAlign = "center";
+  rows.forEach((row, ri) => {
+    const y = H * (ri === 0 ? 0.32 : 0.74), mid = (row.c[0] + row.c[1]) / 2;
+    const open = Math.abs(q - row.c[0]) <= Math.abs(q - row.c[1]) ? 0 : 1, found = lists[open].includes(ans);
+    if (ri === 1) { g.fillStyle = rgba(TOK.accent, 0.16); g.fillRect(xs(5.5), y - 16 * dpr, xs(6) - xs(5.5), 32 * dpr); }
+    g.strokeStyle = TOK.rule; g.lineWidth = 1.5 * dpr; g.beginPath(); g.moveTo(xs(-0.5), y); g.lineTo(xs(10.5), y); g.stroke();
+    g.strokeStyle = TOK["ink-2"]; g.setLineDash([2 * dpr, 3 * dpr]); g.beginPath(); g.moveTo(xs(mid), y - 18 * dpr); g.lineTo(xs(mid), y + 18 * dpr); g.stroke(); g.setLineDash([]);
+    g.fillStyle = TOK["ink-2"]; g.textBaseline = "bottom"; g.fillText(`cut ${mid}`, xs(mid), y - 20 * dpr);
+    P.forEach((p) => {
+      const inOpen = lists[open].includes(p);
+      g.fillStyle = inOpen ? TOK.ink : TOK.pt; g.beginPath(); g.arc(xs(p), y, 5 * dpr, 0, 7); g.fill();
+      g.fillStyle = TOK["ink-2"]; g.textBaseline = "top"; g.fillText(String(p), xs(p), y + 9 * dpr);
+      if (p === ans) { g.strokeStyle = TOK.green; g.lineWidth = 2 * dpr; g.beginPath(); g.arc(xs(p), y, 9 * dpr, 0, 7); g.stroke(); }
+    });
+    row.c.forEach((c) => { g.strokeStyle = TOK.accent; g.lineWidth = 2 * dpr; g.beginPath(); g.moveTo(xs(c) - 5 * dpr, y - 5 * dpr); g.lineTo(xs(c) + 5 * dpr, y + 5 * dpr); g.moveTo(xs(c) + 5 * dpr, y - 5 * dpr); g.lineTo(xs(c) - 5 * dpr, y + 5 * dpr); g.stroke(); });
+    $(row.el).innerHTML = `Opens [${lists[open].join(", ")}] · answer ${ans} · ${found ? '<b class="ok">found</b>' : '<b class="bad">missed</b>'}`;
+  });
+  g.strokeStyle = TOK.ink; g.lineWidth = 1.5 * dpr; g.beginPath(); g.moveTo(xs(q), 8 * dpr); g.lineTo(xs(q), H - 8 * dpr); g.stroke();
+  g.fillStyle = TOK.ink; g.textBaseline = "top"; g.textAlign = q > 9 ? "right" : "left"; g.fillText(`query ${q.toFixed(2)}`, xs(q) + 5 * dpr, 4 * dpr);
+}
+$("fourQ").addEventListener("input", drawFour);
+
+const retheme = () => { readTokens(); S.baseStale = true; renderAll(); drawGap(); drawFour(); };
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", retheme);
+new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+let rz = 0;
+const ro = new ResizeObserver(() => { clearTimeout(rz); rz = setTimeout(() => { S.baseStale = true; renderAll(); drawGap(); drawFour(); }, 60); });
+ro.observe($("cvC")); ro.observe($("cvGap"));
+
+readTokens();
+drawGap(); drawFour();
+applyTour("between");
+})();
+</script>
+</body>
+</html>

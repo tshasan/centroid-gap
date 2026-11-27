@@ -1,0 +1,339 @@
+{
+  "threads": 6,
+  "faiss": "1.12.0",
+  "index_seed": 2026,
+  "repeats": 7,
+  "timing": "batch throughput: whole split per call, arms alternated, median and range",
+  "deep": {
+    "fit_seconds": 125.27983786399999,
+    "report": {
+      "metric": "l2",
+      "nlist": 1000,
+      "k": 10,
+      "target": 0.95,
+      "queries": {
+        "fit": 50000,
+        "select": 3000,
+        "check": 3000
+      },
+      "centroids_select_work_interp": 19005.61294892473,
+      "arms": [
+        {
+          "tau_frac": 0.1,
+          "gamma": 0.5,
+          "lam": 0.0001,
+          "select_work_interp": 17901.216108695637
+        },
+        {
+          "tau_frac": 0.1,
+          "gamma": 1.0,
+          "lam": 0.0001,
+          "select_work_interp": 17665.353064896743
+        },
+        {
+          "tau_frac": 0.2,
+          "gamma": 0.5,
+          "lam": 0.0001,
+          "select_work_interp": 17993.080024691342
+        },
+        {
+          "tau_frac": 0.2,
+          "gamma": 1.0,
+          "lam": 0.0001,
+          "select_work_interp": 17739.95854330708
+        },
+        {
+          "tau_frac": 0.3,
+          "gamma": 0.5,
+          "lam": 0.0001,
+          "select_work_interp": 19569.87091091953
+        },
+        {
+          "tau_frac": 0.3,
+          "gamma": 1.0,
+          "lam": 0.0001,
+          "select_work_interp": 18699.326033898302
+        },
+        {
+          "tau_frac": 0.5,
+          "gamma": 0.5,
+          "lam": 0.0001,
+          "select_work_interp": 29717.839886792426
+        },
+        {
+          "tau_frac": 0.5,
+          "gamma": 1.0,
+          "lam": 0.0001,
+          "select_work_interp": 26246.67947325102
+        }
+      ],
+      "chosen_arm": {
+        "tau_frac": 0.1,
+        "gamma": 1.0,
+        "lam": 0.0001
+      },
+      "decision": "biases",
+      "reason": "lower work on held-out queries",
+      "shift": null,
+      "centroids": {
+        "nprobe": 18,
+        "select_work": 19980.547,
+        "check_recall": 0.9532333333333333,
+        "check_work": 19827.598666666665
+      },
+      "tuned": {
+        "nprobe": 16,
+        "select_work": 18627.392333333333,
+        "check_recall": 0.9518666666666667,
+        "check_work": 18482.878
+      },
+      "work_change": -0.06782065187386266
+    },
+    "test": {
+      "queries": 4977,
+      "centroids": {
+        "nprobe": 18,
+        "recall": 0.9520996584287724,
+        "work": 19924.448262005226,
+        "batch_ms_per_query": {
+          "median": 0.10818018163552061,
+          "min": 0.10732953204742196,
+          "max": 0.10918918324291994
+        }
+      },
+      "tuned": {
+        "nprobe": 16,
+        "recall": 0.9515973477998795,
+        "work": 18580.579867389995,
+        "batch_ms_per_query": {
+          "median": 0.10161213039984159,
+          "min": 0.10069049447458413,
+          "max": 0.10419462085593836
+        }
+      },
+      "work_change": -0.06744821120983857,
+      "time_change_median": -0.06071399711462877,
+      "time_change_rounds": {
+        "min": -0.0718934173795388,
+        "max": -0.0292172737346722
+      },
+      "at_target": {
+        "queries": 4977,
+        "interpolated": {
+          "base": 19345.16636859222,
+          "other": 18176.263711609972,
+          "change": -0.060423499840250416,
+          "ci95": [
+            -0.07646980280212276,
+            -0.0432705615201623
+          ]
+        },
+        "whole_probe": {
+          "base_probes": 18,
+          "base": 19924.443439823186,
+          "other_probes": 16,
+          "other": 18580.579867389995,
+          "change": -0.06744798551046083,
+          "ci95": [
+            -0.07341890368731344,
+            -0.014313495023251677
+          ]
+        }
+      }
+    }
+  },
+  "t2i": {
+    "fit_seconds": 151.30591426899997,
+    "report": {
+      "metric": "ip",
+      "nlist": 1000,
+      "k": 10,
+      "target": 0.95,
+      "queries": {
+        "fit": 50000,
+        "select": 3000,
+        "check": 3000
+      },
+      "centroids_select_work_interp": 32588.713859649113,
+      "arms": [
+        {
+          "tau_frac": 0.1,
+          "gamma": 0.5,
+          "lam": 0.0001,
+          "select_work_interp": 30496.521930817595
+        },
+        {
+          "tau_frac": 0.1,
+          "gamma": 1.0,
+          "lam": 0.0001,
+          "select_work_interp": 30058.099159722206
+        },
+        {
+          "tau_frac": 0.2,
+          "gamma": 0.5,
+          "lam": 0.0001,
+          "select_work_interp": 30313.854119658114
+        },
+        {
+          "tau_frac": 0.2,
+          "gamma": 1.0,
+          "lam": 0.0001,
+          "select_work_interp": 30258.813333333273
+        },
+        {
+          "tau_frac": 0.3,
+          "gamma": 0.5,
+          "lam": 0.0001,
+          "select_work_interp": 34975.23368852458
+        },
+        {
+          "tau_frac": 0.3,
+          "gamma": 1.0,
+          "lam": 0.0001,
+          "select_work_interp": 33722.25165277775
+        },
+        {
+          "tau_frac": 0.5,
+          "gamma": 0.5,
+          "lam": 0.0001,
+          "select_work_interp": 59712.68223333323
+        },
+        {
+          "tau_frac": 0.5,
+          "gamma": 1.0,
+          "lam": 0.0001,
+          "select_work_interp": 58210.53717543847
+        }
+      ],
+      "chosen_arm": {
+        "tau_frac": 0.1,
+        "gamma": 1.0,
+        "lam": 0.0001
+      },
+      "decision": "biases",
+      "reason": "lower work on held-out queries",
+      "shift": {
+        "queries": 3000,
+        "centroids_work_interp": 9143.412923497262,
+        "biases_work_interp": 9068.060791194966
+      },
+      "centroids": {
+        "nprobe": 34,
+        "select_work": 34477.44433333333,
+        "check_recall": 0.9534666666666667,
+        "check_work": 34428.644
+      },
+      "tuned": {
+        "nprobe": 31,
+        "select_work": 31918.157333333333,
+        "check_recall": 0.9514666666666667,
+        "check_work": 31877.457
+      },
+      "work_change": -0.07410071102422744
+    },
+    "test": {
+      "queries": 4962,
+      "centroids": {
+        "nprobe": 34,
+        "recall": 0.9497783151954857,
+        "work": 34512.29766223297,
+        "batch_ms_per_query": {
+          "median": 0.40356392241031414,
+          "min": 0.40181235308343455,
+          "max": 0.40499517714631644
+        }
+      },
+      "tuned": {
+        "nprobe": 31,
+        "recall": 0.9507456670697301,
+        "work": 31988.614671503427,
+        "batch_ms_per_query": {
+          "median": 0.3801753355501875,
+          "min": 0.3794736267634096,
+          "max": 0.3835895284159639
+        }
+      },
+      "work_change": -0.07312416621543072,
+      "time_change_median": -0.05795509846478997,
+      "time_change_rounds": {
+        "min": -0.0630169242081774,
+        "max": -0.04816648648825428
+      },
+      "at_target": {
+        "queries": 4962,
+        "interpolated": {
+          "base": 34650.90202203408,
+          "other": 31647.43937287871,
+          "change": -0.08667776230602908,
+          "ci95": [
+            -0.1088500773255008,
+            -0.06485531802658967
+          ]
+        },
+        "whole_probe": {
+          "base_probes": 35,
+          "base": 35495.12857718662,
+          "other_probes": 31,
+          "other": 31988.614671503427,
+          "change": -0.09878859568174359,
+          "ci95": [
+            -0.10553923077787851,
+            -0.06762350513401177
+          ]
+        }
+      }
+    },
+    "image_shift": {
+      "queries": 1993,
+      "centroids": {
+        "nprobe": 34,
+        "recall": 0.9949322629202207,
+        "work": 36638.67686904164,
+        "batch_ms_per_query": {
+          "median": 0.43673488559960233,
+          "min": 0.43575948871049097,
+          "max": 0.4388732689412777
+        }
+      },
+      "tuned": {
+        "nprobe": 31,
+        "recall": 0.9938785750125438,
+        "work": 33610.26191670848,
+        "batch_ms_per_query": {
+          "median": 0.4059856733567647,
+          "min": 0.40361339237331734,
+          "max": 0.4089362182639318
+        }
+      },
+      "work_change": -0.08265623136877154,
+      "time_change_median": -0.07040704385366736,
+      "time_change_rounds": {
+        "min": -0.07901722403739575,
+        "max": -0.0616176212258398
+      },
+      "at_target": {
+        "queries": 1993,
+        "interpolated": {
+          "base": 9457.924724340059,
+          "other": 9346.420464870283,
+          "change": -0.01178950591378869,
+          "ci95": [
+            -0.03472757944974492,
+            0.009330930286900454
+          ]
+        },
+        "whole_probe": {
+          "base_probes": 8,
+          "base": 9655.667335674862,
+          "other_probes": 8,
+          "other": 9672.451078775715,
+          "change": 0.0017382271486139356,
+          "ci95": [
+            -0.0983823524751298,
+            0.004096342258854162
+          ]
+        }
+      }
+    }
+  }
+}

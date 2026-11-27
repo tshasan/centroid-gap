@@ -1,0 +1,23 @@
+{
+  "workload": "deep",
+  "learn_url": "https://storage.yandexcloud.net/yandex-research/ann-datasets/DEEP/learn.350M.fbin",
+  "fit_end_row": 16389,
+  "learn_download": {
+    "rows": [
+      40000,
+      140000
+    ],
+    "sha256": "0f781b4393f87536fca74756caeeeb53faa165302033800e6c2bc83004984cae"
+  },
+  "extra": {
+    "candidates": 123562,
+    "retained": 123118
+  },
+  "seed2": {
+    "seed": 2027,
+    "list_size_min_max": [
+      355,
+      3071
+    ]
+  }
+}

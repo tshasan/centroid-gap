@@ -1,0 +1,30 @@
+== deep
+139,435 queries: 50,000 fit, 3,000 select, 3,000 check; nlist 1000, metric l2
+  tau 0.1  gamma 0.5 lam 0.0001: select work 17,893 (-5.85% vs centroids 19,006)
+  tau 0.1  gamma 1.0 lam 0.0001: select work 17,664 (-7.06% vs centroids 19,006)
+  tau 0.2  gamma 0.5 lam 0.0001: select work 17,998 (-5.30% vs centroids 19,006)
+  tau 0.2  gamma 1.0 lam 0.0001: select work 17,752 (-6.60% vs centroids 19,006)
+  tau 0.3  gamma 0.5 lam 0.0001: select work 19,603 (+3.14% vs centroids 19,006)
+  tau 0.3  gamma 1.0 lam 0.0001: select work 18,722 (-1.49% vs centroids 19,006)
+  tau 0.5  gamma 0.5 lam 0.0001: select work 29,872 (+57.17% vs centroids 19,006)
+  tau 0.5  gamma 1.0 lam 0.0001: select work 26,362 (+38.71% vs centroids 19,006)
+decision: biases (lower work on held-out queries)
+centroids: nprobe 18, check recall@10 0.9532, work 19,828
+tuned:     nprobe 16, check recall@10 0.9519, work 18,482 (-6.79%)
+deep test: centroids nprobe 18 recall 0.9521 work 19,924 0.106 ms | tuned nprobe 16 recall 0.9516 work 18,579 0.099 ms | work -6.75% time -6.61%
+== t2i
+138,723 queries: 50,000 fit, 3,000 select, 3,000 check; nlist 1000, metric ip
+  tau 0.1  gamma 0.5 lam 0.0001: select work 30,495 (-6.42% vs centroids 32,589)
+  tau 0.1  gamma 1.0 lam 0.0001: select work 30,059 (-7.76% vs centroids 32,589)
+  tau 0.2  gamma 0.5 lam 0.0001: select work 30,333 (-6.92% vs centroids 32,589)
+  tau 0.2  gamma 1.0 lam 0.0001: select work 30,224 (-7.26% vs centroids 32,589)
+  tau 0.3  gamma 0.5 lam 0.0001: select work 34,948 (+7.24% vs centroids 32,589)
+  tau 0.3  gamma 1.0 lam 0.0001: select work 33,750 (+3.56% vs centroids 32,589)
+  tau 0.5  gamma 0.5 lam 0.0001: select work 59,502 (+82.58% vs centroids 32,589)
+  tau 0.5  gamma 1.0 lam 0.0001: select work 57,962 (+77.86% vs centroids 32,589)
+  shift queries: 9,070 vs centroids 9,143
+decision: biases (lower work on held-out queries)
+centroids: nprobe 34, check recall@10 0.9535, work 34,429
+tuned:     nprobe 31, check recall@10 0.9514, work 31,880 (-7.40%)
+t2i test: centroids nprobe 34 recall 0.9498 work 34,512 0.402 ms | tuned nprobe 31 recall 0.9508 work 31,990 0.380 ms | work -7.31% time -5.57%
+t2i image_shift: centroids nprobe 34 recall 0.9949 work 36,639 0.438 ms | tuned nprobe 31 recall 0.9939 work 33,612 0.405 ms | work -8.26% time -7.59%

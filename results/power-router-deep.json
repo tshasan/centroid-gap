@@ -1,0 +1,153 @@
+{
+  "workload": "deep",
+  "metric": "l2",
+  "score_spread": 0.37219268853879306,
+  "rows": [
+    {
+      "tau": null,
+      "val": {
+        "probes": 18,
+        "recall": 0.9538487282463186,
+        "work": 19875.138219544846,
+        "scanned": 18875.138219544846,
+        "tip_scores": 1000,
+        "recall_at_1_probe": 0.44856091030789824
+      },
+      "test": {
+        "probes": 18,
+        "recall": 0.9520996584287723,
+        "work": 19924.448262005226,
+        "scanned": 18924.448262005226,
+        "tip_scores": 1000,
+        "recall_at_1_probe": 0.4472774763914004
+      }
+    },
+    {
+      "tau": 0.007443853770775861,
+      "tau_over_spread": 0.02,
+      "bias_std_over_spread": 0.1236289377429599,
+      "val": {
+        "probes": 16,
+        "recall": 0.9516064257028113,
+        "work": 18794.513052208837,
+        "scanned": 17794.513052208837,
+        "tip_scores": 1000,
+        "recall_at_1_probe": 0.46609772423025436
+      },
+      "test": {
+        "probes": 16,
+        "recall": 0.950632911392405,
+        "work": 18839.349206349205,
+        "scanned": 17839.349206349205,
+        "tip_scores": 1000,
+        "recall_at_1_probe": 0.4691782198111312
+      }
+    },
+    {
+      "tau": 0.018609634426939654,
+      "tau_over_spread": 0.05,
+      "bias_std_over_spread": 0.13356334152581525,
+      "val": {
+        "probes": 16,
+        "recall": 0.9519410977242303,
+        "work": 18866.4016064257,
+        "scanned": 17866.4016064257,
+        "tip_scores": 1000,
+        "recall_at_1_probe": 0.4676372155287818
+      },
+      "test": {
+        "probes": 16,
+        "recall": 0.9504520795660036,
+        "work": 18906.45027124774,
+        "scanned": 17906.45027124774,
+        "tip_scores": 1000,
+        "recall_at_1_probe": 0.46996182439220413
+      }
+    },
+    {
+      "tau": 0.03721926885387931,
+      "tau_over_spread": 0.1,
+      "bias_std_over_spread": 0.13026144595851857,
+      "val": {
+        "probes": 16,
+        "recall": 0.9528447121820616,
+        "work": 18889.161311914326,
+        "scanned": 17889.161311914326,
+        "tip_scores": 1000,
+        "recall_at_1_probe": 0.4705488621151272
+      },
+      "test": {
+        "probes": 16,
+        "recall": 0.9510146674703637,
+        "work": 18936.253767329716,
+        "scanned": 17936.253767329716,
+        "tip_scores": 1000,
+        "recall_at_1_probe": 0.4730359654410287
+      }
+    },
+    {
+      "tau": 0.07443853770775861,
+      "tau_over_spread": 0.2,
+      "bias_std_over_spread": 0.1438245167820655,
+      "val": {
+        "probes": 16,
+        "recall": 0.9512717536813923,
+        "work": 19131.75234270415,
+        "scanned": 18131.75234270415,
+        "tip_scores": 1000,
+        "recall_at_1_probe": 0.46927710843373494
+      },
+      "test": {
+        "probes": 16,
+        "recall": 0.9514968856741008,
+        "work": 19175.652401044805,
+        "scanned": 18175.652401044805,
+        "tip_scores": 1000,
+        "recall_at_1_probe": 0.4735583684950774
+      }
+    },
+    {
+      "tau": 0.18609634426939653,
+      "tau_over_spread": 0.5,
+      "bias_std_over_spread": 0.35918576144508496,
+      "val": {
+        "probes": 27,
+        "recall": 0.9508032128514057,
+        "work": 33723.26907630522,
+        "scanned": 32723.269076305223,
+        "tip_scores": 1000,
+        "recall_at_1_probe": 0.4001338688085676
+      },
+      "test": {
+        "probes": 27,
+        "recall": 0.9504520795660036,
+        "work": 33829.16395418927,
+        "scanned": 32829.16395418927,
+        "tip_scores": 1000,
+        "recall_at_1_probe": 0.39893510146674704
+      }
+    }
+  ],
+  "validation_pick": {
+    "tau": 0.007443853770775861,
+    "tau_over_spread": 0.02,
+    "bias_std_over_spread": 0.1236289377429599,
+    "val": {
+      "probes": 16,
+      "recall": 0.9516064257028113,
+      "work": 18794.513052208837,
+      "scanned": 17794.513052208837,
+      "tip_scores": 1000,
+      "recall_at_1_probe": 0.46609772423025436
+    },
+    "test": {
+      "probes": 16,
+      "recall": 0.950632911392405,
+      "work": 18839.349206349205,
+      "scanned": 17839.349206349205,
+      "tip_scores": 1000,
+      "recall_at_1_probe": 0.4691782198111312
+    }
+  },
+  "test_change_vs_centroid": -0.054460682744487454
+}

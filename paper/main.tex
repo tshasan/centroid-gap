@@ -1,0 +1,337 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+\DeclareUrlCommand\lean{\urlstyle{tt}}
+\makeatletter\g@addto@macro\UrlBreaks{\do\_}\makeatother
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\work}{\operatorname{work}}
+\newcommand{\rank}{\operatorname{rank}}
+\newcommand{\leanline}[1]{{\sloppy\noindent\small\textit{Lean:} #1.\par}\smallskip}
+
+\title{How Much Can Centroid Routing Cost in IVF Search?\\[2pt]
+\large Machine-Checked Worst Cases and Measured Headroom}
+\author{Taimur Hasan\\\small Independent researcher}
+\date{November 2026\\\small Preprint. Not peer reviewed.}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+An inverted-file (IVF) index splits vectors into lists, scores each list by its mean, and scans the best few lists. We study how much work this choice can waste. On constructed planar data, the unique optimal $k$-means partition with equal list sizes costs $1+\sqrt N/4$ times the work of another equal-size partition at full recall@1; no two such partitions differ by more than $1+\sqrt N/2$. A cosine version survives spherical $e$-means training. On fixed lists that hold opposite directions, every router with one vector and one bias per list opens at least $(k+3)/4$ lists on average, and this bound is attained. An idealized \texttt{RobustPrune} graph isolates a winner that leads by more than $0.4$ in cosine. All four results are checked in Lean~4. On two million-vector benchmarks an oracle router did 70\% and 83\% less work than the centroids at 95\% recall@10, but one learned bias per list saved only 3--11\%.
+\end{abstract}
+
+\section{Introduction}
+
+Most vector search engines do not compare a query with every stored vector. An IVF index~\cite{jegou2011pq,douze2024faiss} groups the $N$ stored vectors into $k$ lists, usually by $k$-means, keeps one representative per list (usually the mean, or \emph{centroid}), scores the query against the $k$ representatives, and scans the best $p$ lists. A centroid describes the middle of a list. A query's nearest neighbor often sits at the edge. This paper asks how much work that mismatch can cost, and how much a better router recovers on real data.
+
+The answer has two parts. In the worst case the cost is large and the $k$-means objective does not prevent it. On two public benchmarks there is large headroom, but routers that keep the lists fixed recover little of it.
+
+\paragraph{Contributions.}
+\begin{itemize}
+\item \textbf{A gap for optimal $k$-means (\S\ref{sec:planar}).} A planar family where the unique optimal $k$-means partition costs $1+\sqrt N/4$ times the work of an equal-size alternative at full recall@1, against a ceiling of $1+\sqrt N/2$ for any two equal-size partitions. One bias per list, with the lists unchanged, closes the gap.
+\item \textbf{The gap under cosine search and training (\S\ref{sec:cosine}).} On the unit sphere a winner that leads by more than $0.09$ in cosine still has its list ranked last. Spherical $e$-means~\cite{bessa2026emeans} reaches this partition from warm starts, and from random document starts with probability at least $p(k)\to 1/e$.
+\item \textbf{A floor for one vector per fixed list (\S\ref{sec:floor}).} On fixed lists that each hold a direction and its opposite, any router with one vector and one bias per list opens at least $(k+3)/4$ lists on average and needs $\lceil (k+1)/2\rceil$ probes for full recall. Both bounds are attained. Two vectors per list need one probe.
+\item \textbf{A pruning failure (\S\ref{sec:prune}).} In an idealized \texttt{RobustPrune}~\cite{subramanya2019diskann}, $L+3$ points on the sphere isolate a winner with cosine lead above $0.4$ for every $\alpha\in[1,3/2]$, and width-$L$ beam search never finds it.
+\item \textbf{Measurements (\S\ref{sec:experiments}).} On DEEP and Text-to-Image (one million vectors each) we measured the oracle headroom and tested retrained representatives, several representatives per list, and one bias per list.
+\end{itemize}
+
+Every theorem above is proved in Lean~4 with Mathlib~\cite{demoura2021lean4,mathlib2020} and uses only Lean's standard axioms (Appendix~\ref{app:lean}). The constructions are worst cases. They show what \emph{can} happen, not how often it does.
+
+\section{Setup}\label{sec:setup}
+
+\begin{definition}[IVF search and work]
+A database of $N$ distinct vectors is split into $k$ nonempty lists $C_1,\dots,C_k$. A \emph{router} assigns each list a score $s(q,j)$ for a query $q$. A search with budget $p$ scans the $p$ best-scoring lists exhaustively. Its \emph{work} is the number of distance or inner-product evaluations,
+\[
+\work(q,p) = k + \sum_{j \text{ probed}} |C_j|,
+\]
+counting all $k$ routing scores. The lists are \emph{balanced} if $|C_j|=B=N/k$ for all $j$.
+\end{definition}
+
+A search succeeds at recall@1 if it scans the list holding the query's nearest neighbor. Recall@$n$ is the share of the true $n$ nearest neighbors that the search returns. We call the scored vector of a list its \emph{representative}. Routers considered here:
+\begin{itemize}
+\item \emph{mean router}: $s(q,j) = -\|q-\mu_j\|^2$ with $\mu_j$ the mean of $C_j$; on unit vectors, the normalized-mean router $s(q,j)=\langle q,\mu_j/\|\mu_j\|\rangle$;
+\item \emph{affine router}: $s(q,j)=\langle q,r_j\rangle + b_j$ with any $r_j$ and $b_j\in\R$;
+\item \emph{power router}: $s(q,j) = -(\|q-c_j\|^2 - w_j)$, whose cells form a power diagram~\cite{aurenhammer1987}. On unit queries it ranks lists exactly as the affine router with $r_j=2c_j$ and $b_j = w_j-\|c_j\|^2$;
+\item \emph{oracle}: opens lists in order of how many of the query's true top-$n$ neighbors they hold. It shows the headroom on fixed lists. No real router has this information.
+\end{itemize}
+
+\paragraph{Lower loss can mean worse search.} A four-point example sets the theme. Store $0,4,8,10$ in lists $\{0,4\}$ and $\{8,10\}$ with centers $4$ and $8$. One Lloyd step~\cite{lloyd1982} moves the centers to $2$ and $9$, keeps the lists, and halves the $k$-means loss from $20$ to $10$. The query $23/4$ has nearest neighbor $4$. One probe returns $4$ before the step and $8$ after it (Lean: \lean{LloydExample.query_result}). Minimizing distortion need not serve a downstream decision; this is a small exact case of the point made by Oehler and Gray~\cite{oehler1995}.
+
+\section{The optimal $k$-means partition can be nearly the worst}\label{sec:planar}
+
+\begin{proposition}[Ceiling]\label{prop:ceiling}
+For balanced lists with $N=kB$, any $p\le k$ and any $t\ge1$,
+\[
+\frac{k+pB}{k+tB} \le 1+\frac{\sqrt N}{2}.
+\]
+So at full recall two balanced indexes in this model differ in work by at most $1+\sqrt N/2$.
+\end{proposition}
+\leanline{\lean{FlatScan.balanced_work_cap}}
+\begin{proof}
+The numerator is at most $k+N$ and the denominator at least $k+B\ge 2\sqrt N$. Then $(k+N)/(k+B) = 1 + (N-B)/(k+B) \le 1+N/(2\sqrt N)$.
+\end{proof}
+
+\begin{theorem}[Planar gap]\label{thm:planar}
+For every $s\ge2$ let $k=2s$ and $N=k^2$. There are $N$ distinct points in $\R^2$, a partition $\mathcal P$ into $k$ lists of $k$ points, and $s$ queries with distinct unique nearest neighbors, such that:
+\begin{enumerate}
+\item $\mathcal P$ minimizes the $k$-means loss over all assignments of the points to $k$ labels and all centers, and every minimizer equals $\mathcal P$ up to relabeling;
+\item under the mean router, each query succeeds at recall@1 if and only if $p\ge s+1$;
+\item exchanging one point between each of $s$ pairs of lists (list sizes unchanged), or keeping $\mathcal P$ and changing $s$ representatives, makes $p=1$ succeed for every query;
+\item all routing scores are distinct, and the work ratio at full recall is
+\[
+\frac{k+(s+1)k}{k+k} = 1+\frac{\sqrt N}{4}
+\]
+\end{enumerate}
+\end{theorem}
+\leanline{\lean{PlanarGap.strict_optimal}, \lean{PlanarGap.probe_thresholds}, \lean{PlanarGap.distance_counts}, \lean{PlanarGap.total_ratio}}
+
+\begin{proof}[Construction]
+For each $i<s$ there are two rows of $k$ points: row $A_i$ at height $0$ (its first point, the \emph{tip}, raised to height $2$) and a decoy row $D_i$ at height $1$, offset horizontally. The rows are far apart horizontally, so any mixed list pays more than the whole row partition; this gives (1). Query $q_i$ sits far above the data, so vertical distance dominates. The tip of $A_i$ is its unique nearest neighbor, but the mean of $A_i$ sits at height $2/k$, below every decoy mean at height $1$. All $s$ decoy rows rank first, which gives (2). Moving each tip into its decoy row, or raising the representative of $A_i$ to height $3/2$, puts the true list first.
+\end{proof}
+
+At $N=4{,}096$ this is $2{,}176$ evaluations against $128$. A line version makes the true list rank last for every query in an interval, with ratio $\Theta(N^{1/3})$ (\lean{GapFamily.total_ratio}).
+
+The router change in item~3 already shows that the lists are not the problem. A bias suffices too:
+
+\begin{theorem}[One bias closes the gap]\label{thm:power}
+On the family of Theorem~\ref{thm:planar}, keeping $\mathcal P$ and its means, there are weights $w$ such that the power router $\|q_i-\mu_l\|^2-w_l$ ranks each query's true list strictly first.
+\end{theorem}
+\leanline{\lean{PlanarGap.exists_power_bias}, \lean{PlanarGap.power_router_one_probe}}
+\begin{proof}[Idea]
+The decoy lists beat the true lists only through a common height offset. A large equal weight on the $s$ lower rows removes it, and among lower rows the plain centroid order is already correct.
+\end{proof}
+
+\paragraph{Caveats.} The queries are built to favor edge points, and they sit far from the data (height about $2.7\times10^{10}$ against a data width of about $6\times10^4$ at $N=4{,}096$). With direct float32 distances none of those 32 queries gets its exact answer; float64, or a float32 score that drops the shared $q_y^2$ term, gets all 32 (\lean{checks/check_ivf_gap.py}).
+
+\section{The gap under cosine search and training}\label{sec:cosine}
+
+Embeddings are often normalized and compared by cosine, and indexes are trained by spherical $k$-means~\cite{dhillon2001}.
+
+\begin{theorem}[Cosine gap]\label{thm:cosine}
+For every $k\ge2$:
+\begin{enumerate}
+\item there are $k^2$ distinct unit vectors split into $k$ rows of $k$, and a unit query whose unique best document leads every other document by more than $0.09$ in cosine. The rows are the unique optimal spherical $k$-means partition into $k$ nonempty lists. Under the normalized-mean router the winner's list ranks strictly last. Using the winner as that list's representative ranks it first. The full-recall work ratio is $(k+1)/2$;
+\item in $\R^{2k}$ there is one such instance with $k$ queries, one per list, each with lead above $0.09$. Every query's list ranks strictly last under the normalized means, and one fixed table of $k$ representatives ranks every query's list first. The work ratio is again $(k+1)/2$.
+\end{enumerate}
+\end{theorem}
+\leanline{\lean{SphericalGap.cosine_gap}, \lean{SphericalGap.ManyQuery.many_query_ivf_gap}}
+
+\begin{proof}[Idea]
+For (1), row $0$ holds $k-1$ copies of a direction $e_0$ orthogonal to the query plus a tip $z=\tfrac12 q+\tfrac{\sqrt3}{2}e_0$; the other rows hold vectors scoring $0.4$ against $q$. Two documents from different rows have inner product at most $1/5$, so any mixed list costs more than the whole row partition. The row-$0$ mean is dominated by $e_0$ and scores below $0.4$. A small rational perturbation makes all documents distinct and keeps every strict inequality.
+\end{proof}
+
+\begin{theorem}[$e$-means trains into the trap]\label{thm:emeans}
+On a perturbed instance of Theorem~\ref{thm:cosine}(1), let each initial center lie within Euclidean distance $0.01$ of its row's anchor. Run the $e$-means update of the pinned Faiss implementation with any finite sequence of batches, steps in $[0,1]$, and a final epoch that visits every document once. Then every membership is preserved and the returned representatives rank the winner's list strictly last. (Revival of underused centers is covered when it is disabled, or when a stated mass condition holds at each check.)
+\end{theorem}
+\leanline{\lean{SphericalGap.EMeans.emeans_gap}}
+
+\begin{theorem}[Random starts]\label{thm:random}
+Draw the $k$ initial centers uniformly without replacement from the documents and run full-batch epochs with revival disabled. The winner's list ends strictly last with probability at least
+\[
+p(k) = \frac{(k-1)\binom{k^2-k}{k-1}}{\binom{k^2}{k}}, \qquad p(k)\to e^{-1}.
+\]
+\end{theorem}
+\leanline{\lean{EMeans.random_start_last_probability}, \lean{EMeans.tendsto_seedProbability}}
+
+Replaying the pinned CPU trainer for seeds $0$--$99$ at $k=4,8,16$ put the winner's list strictly last $83$, $52$ and $37$ times (\lean{results/spherical-emeans-random.json}).
+
+\section{One vector per fixed list has a floor}\label{sec:floor}
+
+Sometimes the lists cannot change: frozen IVF lists, chronological KV-cache pages, fixed document chunks. Only the scoring can. The question is whether one learned vector and one bias per list always route well.
+
+\paragraph{Construction.} Work in $\R^{k+1}$ with orthonormal $e_0,\dots,e_{k-1},e_\perp$. List $i$ holds $m\ge2$ unit vectors: $+e_i$, $-e_i$, and $m-2$ fillers $c_te_i+\sqrt{1-c_t^2}\,e_\perp$ with $c_t=1/t\in(0,1/2]$. The $2k$ queries are $\pm e_i$. Each query's unique nearest neighbor is its own $\pm e_i$, with cosine margin at least $1/2$ (\lean{OneVectorImpossibility.query_margin}).
+
+\paragraph{Ranks and ties.} For a score $s$ and a query-independent strict total order $\prec$ on lists, $\rank(q,i)$ is $1$ plus the number of lists $j$ with $s(q,j)>s(q,i)$, or with $s(q,j)=s(q,i)$ and $j\prec i$. The \emph{tie-inclusive} count is the number of lists $j$ with $s(q,j)\ge s(q,i)$; it is the number of lists a search scans if it opens every list tied with the true one.
+
+\begin{theorem}[One-vector floor]\label{thm:floor}
+For every $r_1,\dots,r_k\in\R^{k+1}$ and $b_1,\dots,b_k\in\R$, let $s(q,j)=\langle q,r_j\rangle+b_j$.
+\begin{enumerate}
+\item For every query-independent strict total order $\prec$: $\sum_q \rank(q,\text{owner}(q))\ge k(k+3)/2$, so the average rank is at least $(k+3)/4$. At budget $p\ge1$ at most $k+2p-1$ of the $2k$ queries succeed, so full recall needs $p\ge\lceil (k+1)/2\rceil$.
+\item With the tie-inclusive count the average is again at least $(k+3)/4$. For any per-query budgets at which every query succeeds, where a search scans every list tied with the last one it opens, $2\sum_q\work(q)\ge 4k^2+mk(k+3)$.
+\item The same bounds hold for every power router.
+\item With $b=0$ and the tie-inclusive count, each pair $\pm e_i$ opens at least $k+1$ lists in total, and any budget $p\le k/2$ answers at most half the queries.
+\item Two representatives per list, $\{+e_j,-e_j\}$, scored by the larger inner product, rank every true list first, at work $2k+m$ per query.
+\end{enumerate}
+\end{theorem}
+\leanline{in \lean{OneVectorImpossibility}: \lean{affine_sum_tieRank_ge}, \lean{affine_answered_le}, \lean{affine_fullRecall_budget_ge}, \lean{affine_sum_minProbedCount_ge}, \lean{affine_sum_work_ge}, \lean{powerDist_sum_work_ge}, \lean{linear_pair_minProbedCount_ge}, \lean{linear_recall_le_half}, \lean{twoTip_returns_all}, \lean{twoTip_totalWork}}
+
+\begin{proof}[Key step]
+For lists $i\ne j$ the linear terms cancel on the pair $\pm e_i$:
+\[
+\bigl(s(e_i,j)-s(e_i,i)\bigr)+\bigl(s(-e_i,j)-s(-e_i,i)\bigr) = 2(b_j-b_i).
+\]
+So if $b_j>b_i$ (or $b_j=b_i$ and $j\prec i$), list $j$ beats list $i$ on at least one of $\pm e_i$. Every unordered pair of lists therefore contributes at least one beat. Summing over the $\binom k2$ pairs and the $2k$ queries gives $2\sum\rank\ge 4k+k(k-1)=k(k+3)$. If $G$ is the set of lists answered on both of their queries within budget $p$, each pair inside $G$ costs one rank step, so $|G|\le 2p-1$.
+\end{proof}
+
+\begin{theorem}[The floor is attained]\label{thm:tight}
+For every $k$ there are $r$ and $b$ with distinct scores on every query, average rank exactly $(k+3)/4$, and total work equal to the bound in Theorem~\ref{thm:floor}(2). The smallest fixed budget at which some affine router answers all $2k$ queries is exactly $\lceil (k+1)/2\rceil$.
+\end{theorem}
+\leanline{in \lean{OneVectorImpossibility}: \lean{witness_sum_tieRank_eq}, \lean{witness_sum_work_eq}, \lean{affine_min_fullRecall_budget}}
+
+The witness is $r_l=k\sum_{i<l}\sigma_{il}e_i$, $b_l=l$, for any signs $\sigma_{il}$; each pair of lists then supplies exactly one beat. At $m=k$ ($N=k^2$) two representatives per list cost $3\sqrt N$ per query, against at least $(N+7\sqrt N)/4$ for any one-vector router (\lean{balanced_affine_vs_twoTip_separation}).
+
+\paragraph{The floor is not about dimension.} The cancellation holds for $\pm u$ in any inner product space, so items (1)--(2) hold for any vectors $u_0,\dots,u_{k-1}$ (\lean{OneVectorCircle.antipodal_sum_tieRank_ge}). In $\R^2$, points on the unit circle give a database where each $\pm u_i$ has its own nearest neighbor with cosine margin at least $1/(32k^2)$ (\lean{OneVectorCircle.circle_query_margin}); the same floor holds there and is attained (\lean{OneVectorCircle.circle_witness_sum_tieRank_eq}). The barrier comes from the convexity of the cells of an affine router, not from high dimension.
+
+\paragraph{Caveats.} The floor needs fixed lists that contain opposite directions; $k$-means would not produce them, and the real lists we measured had no such pairs. If the lists may be rebuilt into $2k$ lists, one vector per list also solves this family, at the same storage as two representatives per list. The factor of two between affine and purely linear routers holds on this family only.
+
+\section{Graph pruning can strand a winner}\label{sec:prune}
+
+Graph indexes such as DiskANN (Vamana)~\cite{subramanya2019diskann} and HNSW~\cite{malkov2020hnsw} walk a neighbor graph toward the query. DiskANN's \texttt{RobustPrune} keeps a node's edge list small: going through candidates from nearest to farthest, it drops a candidate $v$ of node $u$ when a kept neighbor $p$ satisfies $\alpha\|p-v\|\le\|u-v\|$.
+
+\begin{theorem}[\texttt{RobustPrune} isolation]\label{thm:prune}
+For every $L\ge1$ there are $L+3$ distinct rational unit vectors in $\R^3$ and the unit query $q=(0,0,1)$ such that the unique best vector $w$ leads every other by more than $2/5$ in cosine and, for every $\alpha\in[1,3/2]$, with unlimited degree, every other point as a candidate and one pruning pass:
+\begin{enumerate}
+\item in the symmetrized pruned graph, $w$ has exactly one neighbor $p^\ast$, and $\langle p^\ast,q\rangle=-3/29$;
+\item beam search of width $L$ from the fixed start $(1,0,0)$ terminates without visiting $w$.
+\end{enumerate}
+\end{theorem}
+\leanline{\lean{RobustPruneFailure.bidirectional_robustPrune_failure}, \lean{RobustPruneFailure.beam_search_robustPrune_failure}}
+
+\begin{proof}[Idea]
+The start and $L$ decoys lie on a short rational arc whose scores rise toward the query. From every arc point, $p^\ast$ is closer than $w$ and prunes it; if an earlier arc point pruned $p^\ast$, an exact ratio identity shows that the same point already pruned $w$. From $w$, $p^\ast$ is nearest and prunes the whole arc. The decoys fill the beam and evict $p^\ast$.
+\end{proof}
+
+Pruning uses distances between stored points, while a query from outside the data sees a different order. Indyk and Xu~\cite{indyk2023} prove that slow-preprocessing DiskANN returns an $\bigl(\tfrac{\alpha+1}{\alpha-1}+\varepsilon\bigr)$-approximate nearest neighbor in bounded doubling dimension. For $\alpha\le3/2$ that factor is at least $5$, which on the sphere allows almost any point, so Theorem~\ref{thm:prune} is consistent with their guarantee. The Lean development also proves that greedy inner-product search has no false local maxima for every query exactly when each node's edge directions conically span the directions to all other points (\lean{GraphConic.universal_mips_navigable_iff}). That statement is equivalent to classical results on positive spanning sets~\cite{davis1954}.
+
+\section{Experiments}\label{sec:experiments}
+
+\paragraph{Setup.} We built CPU Faiss~1.12.0 IVF-Flat indexes with $1{,}000$ lists over the first one million vectors of two public benchmarks~\cite{simhadri2022bigann}: DEEP~\cite{babenko2016deep} (96-dimensional image descriptors, image queries, squared Euclidean distance) and Yandex Text-to-Image (200-dimensional image embeddings, text queries, inner product). Text-to-Image queries come from a different distribution than its data. Clustering used two restarts and 20 iterations. Exact neighbors came from exhaustive float32 search. We removed query--database overlaps, repeated queries, and queries whose first/second or tenth/eleventh scores were within $10^{-5}$, leaving 2,988 validation and 4,977 test queries on DEEP and 2,977 and 4,962 on Text-to-Image, plus separate training queries. Work counts all 1,000 routing scores plus every scanned vector, so it is a hardware-independent count, not latency. Every comparison uses the same lists. Intervals are paired bootstrap 95\% intervals over test queries. Scripts and raw outputs are in the repository.
+
+\paragraph{Oracle headroom.} Table~\ref{tab:oracle} uses the smallest fixed probe count reaching 95\% on the test queries, chosen separately for each router. On Text-to-Image the oracle needed 6 lists where the centroids needed 34. The list holding the true first neighbor ranked second at the median on both datasets; its 95th and 99th percentile ranks were 14 and 40 on DEEP and 30 and 100 on Text-to-Image. Probe counts chosen on validation slipped on test: the centroid setting that cleared 95\% recall@10 on Text-to-Image validation (32 probes) reached 94.60\% on test.
+
+\begin{table}[t]
+\centering
+\caption{Work per query at the smallest fixed probe count reaching the target on test queries. The oracle shows headroom on fixed lists; it is not an achievable router.}\label{tab:oracle}
+\begin{tabular}{llrrrrr}
+\toprule
+Dataset & Target & \multicolumn{2}{c}{Probes} & \multicolumn{2}{c}{Work} & Oracle saving\\
+ & & centroid & oracle & centroid & oracle & \\
+\midrule
+DEEP & 95\% recall@1 & 14 & 1 & 15{,}873 & 2{,}196 & 86.2\%\\
+DEEP & 95\% recall@10 & 18 & 6 & 19{,}932 & 6{,}043 & 69.7\%\\
+Text-to-Image & 95\% recall@1 & 30 & 1 & 30{,}613 & 2{,}058 & 93.3\%\\
+Text-to-Image & 95\% recall@10 & 34 & 6 & 34{,}529 & 5{,}774 & 83.3\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Routers on fixed lists.} Table~\ref{tab:routers} reports changes in work at 95\% recall@10. These tests used an x86-64 rebuild of the same recipe, whose centroid baselines at whole probe counts were 19,924 (DEEP, 18 probes) and 35,495 (Text-to-Image, 35 probes); the Apple Silicon build in Table~\ref{tab:oracle} crossed 95\% one probe earlier on Text-to-Image. Rows marked ``interpolated'' compare work at exactly 95\% recall, interpolated between probe counts; one probe is about 3\% of the work.
+
+\begin{itemize}
+\item \emph{Retrained single vectors.} Representatives fitted to about 16,000 labeled training queries (shrunk query means and regularized softmax fits) lost on validation. On Text-to-Image validation kept the original centroids; the best changed candidate did 3.5\% more work on test.
+\item \emph{Several representatives per list.} Scoring each list by its best of $m\in\{2,4,8\}$ representatives cut Text-to-Image probes from 35 to 28 at $m=8$, but the extra scores cost more than the scans saved. The best arm did 0.8\% less work; every arm did more work on DEEP. The median participation ratio of a list's covariance was 38.8 on DEEP and 36.9 on Text-to-Image, so the lists spread over many directions; no experiment varied this.
+\item \emph{One bias per list.} The router keeps the centroids and adds a learned scalar per list (4~KB in total, no extra vector work), fitted by softmax cross-entropy on the lists holding each training query's top 10. \texttt{ivf\_tune} fits on 50,000 queries with a loss that charges each list its size, picks the temperature on held-out queries, and picks the probe count with a one-sided confidence margin.
+\end{itemize}
+
+\begin{table}[t]
+\centering
+\caption{Change in work at exactly 95\% recall@10 (interpolated), with paired bootstrap 95\% intervals. ``Image shift'': 1,993 image queries against the text-trained Text-to-Image router. Halving the centroids changes nothing under inner product.}\label{tab:routers}
+\small
+\begin{tabular}{llll}
+\toprule
+Router & DEEP & Text-to-Image & Image shift\\
+\midrule
+Halved centroids (fixed bias $\|c\|^2/2$) & $-1.8\%$ $[-3.7,+0.3]$ & -- & --\\
+One bias, softmax fit & $-3.5\%$ $[-5.2,-1.4]$ & $-4.4\%$ $[-7.3,-2.0]$ & $-0.7\%$ $[-3.5,+1.7]$\\
+\texttt{ivf\_tune}, index seed 2026 & $-6.0\%$ $[-7.7,-4.3]$ & $-8.7\%$ $[-10.9,-6.5]$ & $-1.2\%$ $[-3.5,+0.9]$\\
+\texttt{ivf\_tune}, index seed 2027 & $-6.6\%$ $[-8.3,-5.0]$ & $-11.1\%$ $[-13.6,-8.6]$ & $-2.8\%$ $[-5.8,-0.4]$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+With seed-2026 probe counts chosen by \texttt{ivf\_tune}, batch time per query fell by 6.1\% on DEEP and 5.8\% on Text-to-Image. \textbf{Caveat:} the logs that fixed \texttt{ivf\_tune}'s default temperature grid printed test results, so its rows are not a clean held-out test of that choice. The softmax-fit row is a single run on one index seed.
+
+\paragraph{Rebuilding the lists.} Five passes of $e$-means~\cite{bessa2026emeans} (spherical on Text-to-Image) gave work similar to 25 Lloyd passes at 95\% recall@10 (median of three seeds: 18,229 against 18,950 on DEEP, 34,150 against 34,564 on Text-to-Image) and fitted the centroids 3.5 to 3.9 times faster. The oracle still needed 6 probes on every rebuilt index.
+
+\paragraph{Large-margin winners.} On a spherical index over the same data, one probe missed 12 of the 30 DEEP test queries whose winner led the runner-up by at least $0.09$ in cosine (40\%), against 49.7\% of all 5,000 test queries; on Text-to-Image it missed 4 of 5, against 57.6\%. A clear lead did not make a query easier to route, but the samples are too small to show it is harder.
+
+\section{Related work}\label{sec:related}
+
+\paragraph{IVF cost and cluster pruning.} The one-probe miss is a textbook example~\cite{manning2008ir}, and the $k+N/k$ cost with its minimum at $k=\sqrt N$ appears in earlier cluster-pruning work~\cite{gudmundsson2010}. That distortion-optimal codebooks need not serve a downstream task is classical~\cite{oehler1995}. What \S\ref{sec:planar} adds is a certified unique $k$-means optimum with exactly balanced lists, a gap of the sharp order $\sqrt N$, and a same-storage router fix. We did not find this combination in the sources we checked.
+
+\paragraph{Learned routing and partitions.} Several works learn to rank the lists of a fixed index~\cite{vecchiato2024,bruch2025}, compare partitions and routers with oracle shard selection~\cite{gottesburen2025}, or train the partition itself from query neighbors~\cite{gupta2022bliss,dong2020,bessa2026auctions,zeng2025lira}. LIRA measured the centroid-prefix probe overhead directly on SIFT1M~\cite{zeng2025lira}. SOAR stores secondary assignments to reduce misses~\cite{sun2023soar}. Our measurements agree that the oracle headroom is large; they add that on two million-vector benchmarks, routers on fixed lists recovered little of it.
+
+\paragraph{Several representatives and power diagrams.} Representing a cluster by several points is old~\cite{guha1998cure}, and multiple-representative routers have been evaluated on fixed shards~\cite{bruch2025}. Least-squares assignments with prescribed cluster sizes are induced by power diagrams~\cite{aurenhammer1998}, which makes one bias per list the natural one-scalar extension of centroid routing. A per-expert bias used only for selection also balances load in mixture-of-experts routers~\cite{wang2024lossfree}.
+
+\paragraph{The one-vector floor.} The argument uses only the convexity of the cells of an affine router, in the spirit of the classical fact that one linear threshold cannot compute XOR~\cite{minsky1969}. We did not find the counting bound $(k+3)/4$, its tightness, or the matching fixed-budget bound stated elsewhere.
+
+\paragraph{Graph indexes.} Indyk and Xu~\cite{indyk2023} build worst-case instances for DiskANN, HNSW and NSG and prove the guarantee discussed in \S\ref{sec:prune}. OOD-DiskANN~\cite{jaiswal2022ood} and RoarGraph~\cite{chen2024roargraph} document graph failures on out-of-distribution queries and use query samples to repair them. Theorem~\ref{thm:prune} is an exact small instance of that failure with no query log.
+
+\section{Limitations}\label{sec:limits}
+
+\begin{itemize}
+\item The theorems concern constructed instances. They show what can happen, not how often it does. The planar queries sit far from the data and need float64 or a rearranged score.
+\item The one-vector floor needs fixed lists with opposite directions. The real lists we measured have none, and the floor does not predict the measured savings.
+\item The \texttt{RobustPrune} model is idealized: unlimited degree, full candidate lists, one pass, a fixed start.
+\item The experiments cover two datasets, one million vectors each, IVF-Flat on CPU, one or two index seeds, and mainly the 95\% recall@10 target. Work counts distance evaluations, not latency.
+\item The \texttt{ivf\_tune} results are not a clean held-out test of its default settings, and on shifted (image) queries one seed's interval includes zero.
+\end{itemize}
+
+\section*{Acknowledgments}
+The proofs, experiments and text were developed with the help of Claude (Anthropic), an AI model. The author checked the results and is responsible for any errors.
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\appendix
+\section{Lean formalization}\label{app:lean}
+
+\paragraph{Checking.} The repository pins Lean and Mathlib v4.24.0. From the project root:
+\begin{verbatim}
+lake exe cache get
+lake build
+lake env lean checks/AuditAxioms.lean
+python3 checks/check_ivf_gap.py
+python3 checks/verify_graph_conic_theorems.py
+\end{verbatim}
+The audit walks every theorem declaration in the project, including private and Lean-generated ones, and fails on any axiom other than \texttt{propext}, \texttt{Classical.choice} and \texttt{Quot.sound}, or if a cited theorem is missing. On 26 November 2026 it printed
+\begin{verbatim}
+Audited 1323 theorem declarations (735 generated by Lean, 588 others).
+\end{verbatim}
+The scalar and planar gap modules also built on Lean 4.23.0, 4.25.0 and 4.36.0 (the last after compatibility edits), and the independent Nanoda kernel accepted an export of the two gap results and the ceiling. The Python scripts replay the constructions in exact rational arithmetic.
+
+\paragraph{Where each result is proved.} All names are in namespace \lean{IndexRecall}.
+
+\begin{center}
+\small
+\begin{tabular}{p{0.17\linewidth}p{0.32\linewidth}p{0.39\linewidth}}
+\toprule
+Result & File & Main declarations\\
+\midrule
+Four-point example & \lean{OneProbe.lean} & \lean{LloydExample.update}, \lean{LloydExample.query_result}\\
+Prop.~\ref{prop:ceiling} & \lean{PlanarIVF.lean} & \lean{FlatScan.balanced_work_cap}\\
+Thm.~\ref{thm:planar} & \lean{PlanarOptimality.lean}, \lean{PlanarIVF.lean} & \lean{PlanarGap.strict_optimal}, \lean{PlanarGap.total_ratio}\\
+Line family & \lean{IVFGap.lean} & \lean{GapFamily.optimal_partition}, \lean{GapFamily.total_ratio}\\
+Thm.~\ref{thm:power} & \lean{PlanarPowerRouter.lean} & \lean{PlanarGap.power_router_one_probe}\\
+Thm.~\ref{thm:cosine} & \lean{SphericalIVF.lean}, \lean{ManyQueryIVF.lean} & \lean{SphericalGap.cosine_gap}, \lean{many_query_ivf_gap}\\
+Thm.~\ref{thm:emeans} & \lean{EMeansTraining.lean} & \lean{SphericalGap.EMeans.emeans_gap}\\
+Thm.~\ref{thm:random} & \lean{EMeansTraining.lean}, \lean{EMeansSeedLimit.lean} & \lean{random_start_last_probability}, \lean{tendsto_seedProbability}\\
+Thms.~\ref{thm:floor}--\ref{thm:tight} & \lean{OneVectorImpossibility.lean} & \lean{affine_sum_tieRank_ge}, \lean{affine_min_fullRecall_budget}\\
+Planar floor & \lean{OneVectorCircle.lean} & \lean{circle_affine_vs_twoTip}, \lean{circle_witness_sum_tieRank_eq}\\
+Thm.~\ref{thm:prune} & \lean{RobustPruneFailure.lean} & \lean{beam_search_robustPrune_failure}\\
+Conic navigability & \lean{GraphConic.lean} & \lean{universal_mips_navigable_iff}\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A full theorem index, the compiler matrix and the replication record are in \lean{docs/verification.md}.
+The source is at \url{https://github.com/tshasan/centroid-gap}.
+
+\end{document}

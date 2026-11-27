@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Step through the exact RobustPrune counterexample on the sphere: pruning leaves a high-margin winner behind a blocker, and beam search never finds it.">
+<title>RobustPrune Trap</title>
+<style>
+:root {
+  --bg: #f6f6f3; --panel: #ffffff; --ink: #161614; --mute: #66665f; --rule: #d6d6cf;
+  --winner: #17883f; --blocker: #d0342c; --decoy: #2f62d9; --query: #b77900; --conic: #8a4fd6;
+  --grid: #e4e4dd; --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121211; --panel: #1b1b1a; --ink: #ecece8; --mute: #9a9a92; --rule: #3a3a36;
+    --winner: #3cc47c; --blocker: #ff6a5f; --decoy: #6f95ff; --query: #f5c234; --conic: #b98cff;
+    --grid: #2a2a27; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121211; --panel: #1b1b1a; --ink: #ecece8; --mute: #9a9a92; --rule: #3a3a36;
+  --winner: #3cc47c; --blocker: #ff6a5f; --decoy: #6f95ff; --query: #f5c234; --conic: #b98cff;
+  --grid: #2a2a27; color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--sans); }
+main { max-width: 1000px; margin: 0 auto; padding: 32px 16px 56px; display: grid; gap: 28px; }
+h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.1; margin: 0 0 10px; }
+h2 { font-size: 20px; margin: 0 0 8px; }
+p { margin: 0 0 10px; max-width: 68ch; }
+code { font-family: var(--mono); font-size: .92em; }
+a { color: var(--decoy); }
+.lede { font-size: 18px; }
+.card { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 18px; min-width: 0; }
+.lab { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 760px) { .lab { grid-template-columns: minmax(0, 1fr); } }
+.controls { display: grid; gap: 16px; }
+.field label { display: flex; justify-content: space-between; font-size: 14px; color: var(--mute); }
+.field output { font-family: var(--mono); color: var(--ink); }
+input[type="range"] { width: 100%; accent-color: var(--decoy); }
+.buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+button { font: 500 14px var(--sans); padding: 8px 12px; border-radius: 7px; border: 1px solid var(--rule);
+  background: var(--bg); color: var(--ink); cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--ink); }
+button:disabled { opacity: .45; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--decoy); outline-offset: 2px; }
+button[aria-pressed="true"] { background: var(--conic); border-color: var(--conic); color: #fff; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+@media (max-width: 520px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { border: 1px solid var(--rule); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+.stat .k { font-size: 12px; color: var(--mute); }
+.stat .v { font: 600 20px var(--mono); }
+.good { color: var(--winner); } .bad { color: var(--blocker); }
+canvas { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; touch-action: none; cursor: grab; }
+canvas.dragging { cursor: grabbing; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--mute); margin-top: 8px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.log { font: 13px/1.5 var(--mono); color: var(--mute); margin-top: 10px; min-height: 3em; overflow-wrap: anywhere; }
+.note { font-size: 14px; color: var(--mute); }
+footer { font-size: 13px; color: var(--mute); border-top: 1px solid var(--rule); padding-top: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>A pruned graph that hides the answer</h1>
+    <p class="lede">Graph indexes such as DiskANN keep each node's neighbor list short with a rule called <code>RobustPrune</code>. Here are <i>L</i> + 3 points on a sphere where that rule leaves the best answer to the query connected to a single point, a blocker the query scores below zero. Beam search of width <i>L</i> fills up with decoys and never reaches the answer.</p>
+    <p class="note">This is the exact construction proved in Lean, in an idealized model: no degree cap, every other point is a pruning candidate, one pruning pass, search from a fixed start. It is a worst case, not a measurement of real indexes.</p>
+  </header>
+
+  <section class="lab">
+    <div class="card controls">
+      <div class="field">
+        <label for="alpha"><span>Pruning slack α</span><output id="alphaOut"></output></label>
+        <input id="alpha" type="range" min="1" max="1.65" step="0.05" value="1.2">
+      </div>
+      <div class="field">
+        <label for="width"><span>Beam width <i>L</i> = number of decoys</span><output id="widthOut"></output></label>
+        <input id="width" type="range" min="1" max="12" step="1" value="4">
+      </div>
+      <div class="buttons">
+        <button id="step" type="button">Step</button>
+        <button id="run" type="button">Run to end</button>
+        <button id="reset" type="button">Reset</button>
+      </div>
+      <div class="buttons">
+        <button id="conic" type="button" aria-pressed="false">Keep the conic-hull edge</button>
+      </div>
+      <p class="note">The proof covers α from 1 to 1.5. Above 1.5 the page still computes the prune exactly, but the theorem says nothing.</p>
+    </div>
+
+    <div class="card">
+      <div class="stats" aria-live="polite">
+        <div class="stat"><div class="k">Winner's neighbors</div><div class="v" id="degree"></div></div>
+        <div class="stat"><div class="k">Search</div><div class="v" id="phase"></div></div>
+        <div class="stat"><div class="k">Recall@1</div><div class="v" id="recall"></div></div>
+        <div class="stat"><div class="k">Steps</div><div class="v" id="steps"></div></div>
+      </div>
+      <canvas id="sphere" aria-label="Points on the sphere with their pruned graph. Drag to rotate."></canvas>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--winner)"></i>winner w, score 0.429</span>
+        <span><i class="dot" style="background:var(--blocker)"></i>blocker p*, score −0.103</span>
+        <span><i class="dot" style="background:var(--decoy)"></i>start u and decoys, score 0 to 0.024</span>
+        <span><i class="dot" style="background:var(--query)"></i>query q = (0, 0, 1)</span>
+        <span>ring: in the beam · hollow centre: expanded</span>
+      </div>
+      <div class="log" id="log"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Why it breaks</h2>
+    <p><code>RobustPrune</code> visits a node's candidates from nearest to farthest. It keeps a candidate <i>p</i> and drops every later candidate <i>v</i> with α·|<i>p</i> − <i>v</i>| ≤ |<i>u</i> − <i>v</i>|: if <i>p</i> is much closer to <i>v</i>, the search can reach <i>v</i> through <i>p</i>. The blocker p* = (16, 24, −3)/29 sits between the decoys and the winner w = (−2, 6, 3)/7 in distance. From the start and every decoy, w is pruned, by p* or by a nearer decoy; from w, p* prunes every decoy. The winner keeps one edge, to p*.</p>
+    <p>That shortcut assumes the query wants what is near p*. Here the query points straight up. The winner leads every other point by more than 0.40 in cosine, but p* scores below zero, below every decoy. The beam keeps the <i>L</i> best points it has seen, so once it holds the <i>L</i> decoys it never expands p*, and w is never reached.</p>
+    <p>Turn on the conic-hull edge to keep the edge from the top decoy to w. Every direction from that decoy toward the other points lowers the query score, while the direction to w raises it, so no combination of kept edges can stand in for it. A pruning rule that keeps an edge unless it lies in the cone of the kept ones must keep this one, and the search then finds w.</p>
+    <p class="note">The decoys all lie within 0.025 of the start; the picture spreads them out so they can be told apart. All pruning and search use the exact coordinates.</p>
+  </section>
+
+  <footer>
+    Paper: <a href="../paper/main.pdf">main.pdf</a> ·
+    Lean: <a href="../IndexRecall/RobustPruneFailure.lean">RobustPruneFailure.lean</a> ·
+    exact check for <i>L</i> up to 32: <a href="../checks/verify_graph_conic_theorems.py">verify_graph_conic_theorems.py</a> ·
+    other demos: <a href="README.md#demos">docs index</a>
+  </footer>
+</main>
+
+<script>
+"use strict";
+
+/* ---------- geometry (exact coordinates of the Lean construction) ---------- */
+const QUERY = [0, 0, 1];
+const BLOCKER = [16 / 29, 24 / 29, -3 / 29];
+const WINNER = [-2 / 7, 6 / 7, 3 / 7];
+const VISUAL_SPREAD = 35;  // decoys drawn this much farther apart than they are
+
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const dist2 = (a, b) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2;
+const curve = (t) => { const d = 1 + 37 * t * t; return [(1 - 37 * t * t) / d, 2 * t / d, 12 * t / d]; };
+
+/** Points: index 0 is the start u, 1..L the decoys, L+1 the blocker, L+2 the winner. */
+function buildPoints(L) {
+  const points = [];
+  for (let j = 0; j <= L; j++) {
+    const t = j / (500 * L);
+    points.push({ label: j === 0 ? "u" : `d${j}`, kind: j === 0 ? "start" : "decoy", pos: curve(t),
+                  view: curve(Math.min(t * VISUAL_SPREAD, 0.16)) });
+  }
+  points.push({ label: "p*", kind: "blocker", pos: BLOCKER, view: BLOCKER });
+  points.push({ label: "w", kind: "winner", pos: WINNER, view: WINNER });
+  for (const p of points) p.score = dot(p.pos, QUERY);
+  return points;
+}
+
+/** Exact RobustPrune at every node (no degree cap, all other points as candidates), then symmetrize. */
+function buildGraph({ alpha, L, conicEdge }) {
+  const points = buildPoints(L);
+  const n = points.length, a2 = alpha * alpha;
+  const adj = Array.from({ length: n }, () => new Set());
+  for (let u = 0; u < n; u++) {
+    const cands = [];
+    for (let v = 0; v < n; v++) if (v !== u) cands.push({ v, d2: dist2(points[u].pos, points[v].pos) });
+    cands.sort((x, y) => x.d2 - y.d2);
+    const kept = [];
+    for (const c of cands) {
+      const shadowed = kept.some((p) => a2 * dist2(points[p].pos, points[c.v].pos) <= c.d2 + 1e-12);
+      if (!shadowed) { kept.push(c.v); adj[u].add(c.v); adj[c.v].add(u); }
+    }
+  }
+  const winner = L + 2;
+  if (conicEdge) { adj[L].add(winner); adj[winner].add(L); }
+  return { points, adj, winner };
+}
+
+/* ---------- beam search as an explicit state machine ---------- */
+const Phase = Object.freeze({ READY: "ready", RUNNING: "running", FOUND: "found", TRAPPED: "trapped" });
+
+function initialSearch() {
+  return { phase: Phase.READY, beam: [0], expanded: new Set(), steps: 0, message: "Ready: the beam holds only the start u." };
+}
+
+/** One transition. READY/RUNNING expand the best unexpanded beam node; FOUND/TRAPPED are final. */
+function stepSearch(search, graph, L) {
+  if (search.phase === Phase.FOUND || search.phase === Phase.TRAPPED) return search;
+  const { points, adj, winner } = graph;
+  const next = search.beam.find((i) => !search.expanded.has(i));
+  const expanded = new Set(search.expanded);
+  expanded.add(next);
+  const pool = new Set(search.beam);
+  for (const nb of adj[next]) pool.add(nb);
+  const beam = [...pool].sort((a, b) => points[b].score - points[a].score).slice(0, L);
+  const done = beam.every((i) => expanded.has(i));
+  const phase = beam.includes(winner) ? Phase.FOUND : done ? Phase.TRAPPED : Phase.RUNNING;
+  const shown = beam.map((i) => `${points[i].label} ${points[i].score.toFixed(3)}`).join(", ");
+  const tail = phase === Phase.FOUND ? " The winner is in the beam."
+    : phase === Phase.TRAPPED ? " Every beam node is expanded and w was never seen: recall 0." : "";
+  return { phase, beam, expanded, steps: search.steps + 1,
+           message: `Step ${search.steps + 1}: expanded ${points[next].label}; beam = [${shown}].${tail}` };
+}
+
+function runSearch(search, graph, L) {
+  for (let guard = 0; guard < 4 * graph.points.length; guard++) {
+    const after = stepSearch(search, graph, L);
+    if (after === search) return search;
+    search = after;
+  }
+  throw new Error("beam search did not terminate");
+}
+
+/* ---------- page state: every change goes through these transitions ---------- */
+const state = {
+  params: { alpha: 1.2, L: 4, conicEdge: false },
+  view: { yaw: 0.55, pitch: 0.38, drag: null },
+  graph: null,
+  search: null,
+};
+
+function setParams(patch) {
+  state.params = { ...state.params, ...patch };
+  state.graph = buildGraph(state.params);
+  state.search = initialSearch();
+  render();
+}
+function setSearch(search) { state.search = search; render(); }
+function setView(patch) { state.view = { ...state.view, ...patch }; drawSphere(); }
+
+/* ---------- rendering ---------- */
+const $ = (id) => document.getElementById(id);
+const canvas = $("sphere");
+const PHASE_TEXT = { ready: "ready", running: "running", found: "found", trapped: "trapped" };
+
+function render() {
+  const { params, graph, search } = state;
+  $("alphaOut").textContent = params.alpha.toFixed(2);
+  $("widthOut").textContent = params.L;
+  $("conic").setAttribute("aria-pressed", String(params.conicEdge));
+  const wn = [...graph.adj[graph.winner]].map((i) => graph.points[i].label);
+  $("degree").textContent = `${wn.length}: ${wn.join(", ")}`;
+  $("degree").className = "v " + (wn.length <= 1 ? "bad" : "good");
+  $("phase").textContent = PHASE_TEXT[search.phase];
+  $("phase").className = "v " + (search.phase === Phase.FOUND ? "good" : search.phase === Phase.TRAPPED ? "bad" : "");
+  const final = search.phase === Phase.FOUND || search.phase === Phase.TRAPPED;
+  $("recall").textContent = final ? (search.phase === Phase.FOUND ? "100%" : "0%") : "–";
+  $("recall").className = "v " + (final ? (search.phase === Phase.FOUND ? "good" : "bad") : "");
+  $("steps").textContent = search.steps;
+  $("step").disabled = $("run").disabled = final;
+  $("log").textContent = search.message;
+  drawSphere();
+}
+
+function colors() {
+  const cs = getComputedStyle(document.documentElement);
+  const c = {};
+  for (const name of ["panel", "ink", "mute", "rule", "grid", "winner", "blocker", "decoy", "query", "conic"]) {
+    c[name] = cs.getPropertyValue("--" + name).trim();
+  }
+  return c;
+}
+
+function project(v, cx, cy, R) {
+  const { yaw, pitch } = state.view;
+  const x1 = v[0] * Math.cos(yaw) - v[1] * Math.sin(yaw);
+  const y1 = v[0] * Math.sin(yaw) + v[1] * Math.cos(yaw);
+  const y2 = y1 * Math.cos(pitch) - v[2] * Math.sin(pitch);
+  const z2 = y1 * Math.sin(pitch) + v[2] * Math.cos(pitch);
+  return { x: cx + x1 * R, y: cy - z2 * R, depth: y2 };
+}
+
+function drawSphere() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const W = Math.max(1, Math.round(canvas.clientWidth * dpr)), H = Math.max(1, Math.round(canvas.clientHeight * dpr));
+  if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+  const g = canvas.getContext("2d"), c = colors(), { graph, search, params } = state;
+  const cx = W / 2, cy = H * 0.52, R = Math.min(W, H) * 0.4;
+  g.clearRect(0, 0, W, H);
+  g.lineWidth = dpr;
+  g.strokeStyle = c.rule;
+  g.beginPath(); g.arc(cx, cy, R, 0, 2 * Math.PI); g.stroke();
+  g.strokeStyle = c.grid;
+  for (let lat = -60; lat <= 60; lat += 30) {
+    const phi = lat * Math.PI / 180;
+    g.beginPath();
+    for (let i = 0; i <= 64; i++) {
+      const th = i / 64 * 2 * Math.PI, p = project([Math.cos(phi) * Math.cos(th), Math.cos(phi) * Math.sin(th), Math.sin(phi)], cx, cy, R);
+      i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y);
+    }
+    g.stroke();
+  }
+  const o = project([0, 0, 0], cx, cy, R), q = project([0, 0, 1.18], cx, cy, R);
+  g.strokeStyle = g.fillStyle = c.query; g.lineWidth = 2 * dpr;
+  g.beginPath(); g.moveTo(o.x, o.y); g.lineTo(q.x, q.y); g.stroke();
+  g.font = `600 ${12 * dpr}px ui-monospace, monospace`;
+  g.fillText("q", q.x + 7 * dpr, q.y + 4 * dpr);
+
+  const at = graph.points.map((p) => project(p.view, cx, cy, R));
+  for (let i = 0; i < at.length; i++) {
+    for (const j of graph.adj[i]) {
+      if (j <= i) continue;
+      const touchesWinner = i === graph.winner || j === graph.winner;
+      const conic = params.conicEdge && touchesWinner && (i === params.L || j === params.L);
+      g.strokeStyle = conic ? c.conic : touchesWinner ? c.blocker : c.decoy;
+      g.globalAlpha = touchesWinner ? 1 : 0.4;
+      g.lineWidth = (touchesWinner ? 2.4 : 1.2) * dpr;
+      g.setLineDash(conic ? [6 * dpr, 4 * dpr] : []);
+      g.beginPath(); g.moveTo(at[i].x, at[i].y); g.lineTo(at[j].x, at[j].y); g.stroke();
+    }
+  }
+  g.globalAlpha = 1; g.setLineDash([]);
+  const order = at.map((p, i) => i).sort((a, b) => at[a].depth - at[b].depth);
+  const fill = { start: c.decoy, decoy: c.decoy, blocker: c.blocker, winner: c.winner };
+  for (const i of order) {
+    const pt = graph.points[i], p = at[i];
+    const r = (pt.kind === "decoy" ? 5 : 7.5) * dpr;
+    if (search.beam.includes(i)) {
+      g.strokeStyle = c.ink; g.lineWidth = 2 * dpr;
+      g.beginPath(); g.arc(p.x, p.y, r + 4 * dpr, 0, 2 * Math.PI); g.stroke();
+    }
+    g.fillStyle = fill[pt.kind];
+    g.beginPath(); g.arc(p.x, p.y, r, 0, 2 * Math.PI); g.fill();
+    if (search.expanded.has(i)) {
+      g.fillStyle = c.panel;
+      g.beginPath(); g.arc(p.x, p.y, 2.2 * dpr, 0, 2 * Math.PI); g.fill();
+    }
+    if (pt.kind !== "decoy" || i === params.L || params.L <= 5) {
+      g.fillStyle = c.ink; g.font = `600 ${12 * dpr}px ui-monospace, monospace`;
+      g.fillText(pt.label, p.x + r + 4 * dpr, p.y + 4 * dpr);
+    }
+  }
+  g.fillStyle = c.mute; g.font = `${11 * dpr}px system-ui, sans-serif`;
+  g.fillText("drag to rotate", 10 * dpr, H - 10 * dpr);
+}
+
+/* ---------- events ---------- */
+$("alpha").addEventListener("input", (e) => setParams({ alpha: Number(e.target.value) }));
+$("width").addEventListener("input", (e) => setParams({ L: Number(e.target.value) }));
+$("conic").addEventListener("click", () => setParams({ conicEdge: !state.params.conicEdge }));
+$("step").addEventListener("click", () => setSearch(stepSearch(state.search, state.graph, state.params.L)));
+$("run").addEventListener("click", () => setSearch(runSearch(state.search, state.graph, state.params.L)));
+$("reset").addEventListener("click", () => setSearch(initialSearch()));
+
+canvas.addEventListener("pointerdown", (e) => {
+  canvas.setPointerCapture(e.pointerId);
+  canvas.classList.add("dragging");
+  setView({ drag: { x: e.clientX, y: e.clientY } });
+});
+canvas.addEventListener("pointermove", (e) => {
+  const d = state.view.drag;
+  if (!d) return;
+  setView({ yaw: state.view.yaw + (e.clientX - d.x) * 0.008,
+            pitch: Math.max(-1.3, Math.min(1.3, state.view.pitch + (e.clientY - d.y) * 0.008)),
+            drag: { x: e.clientX, y: e.clientY } });
+});
+const endDrag = () => { canvas.classList.remove("dragging"); setView({ drag: null }); };
+canvas.addEventListener("pointerup", endDrag);
+canvas.addEventListener("pointercancel", endDrag);
+
+new ResizeObserver(drawSphere).observe(canvas);
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawSphere);
+
+$("alpha").value = state.params.alpha;
+$("width").value = state.params.L;
+setParams({});
+</script>
+</body>
+</html>

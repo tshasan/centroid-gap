@@ -1,0 +1,7 @@
+deep: 123,562 distinct new learn rows
+deep extra: 123,118/123,562 exact labels
+deep seed 2027: lists 355..3071
+t2i: 123,615 distinct new learn rows
+t2i extra: 122,480/123,615 exact labels
+t2i image extra: 39,791/40,000 exact labels
+t2i seed 2027: lists 278..3527

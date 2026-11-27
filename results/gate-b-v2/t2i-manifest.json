@@ -1,0 +1,34 @@
+{
+  "workload": "t2i",
+  "learn_url": "https://storage.yandexcloud.net/yandex-research/ann-datasets/T2I/query.learn.50M.fbin",
+  "fit_end_row": 16384,
+  "learn_download": {
+    "rows": [
+      40000,
+      140000
+    ],
+    "sha256": "8f019257ea36ff1bfaccf86558fa8f81084e5bb81c5e5d7d9e3f9ec68aa5fffd"
+  },
+  "extra": {
+    "candidates": 123615,
+    "retained": 122480
+  },
+  "image_download": {
+    "rows": [
+      1004000,
+      1044000
+    ],
+    "sha256": "8bc918245b40c145a5b42b3b4888918d186dab0573d548d621e5f42d3ee81c42"
+  },
+  "image_extra": {
+    "candidates": 40000,
+    "retained": 39791
+  },
+  "seed2": {
+    "seed": 2027,
+    "list_size_min_max": [
+      278,
+      3527
+    ]
+  }
+}

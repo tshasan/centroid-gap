@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Why one label per folder cannot serve a folder with two topics in RAG / IVF vector search, and how two labels fix it.">
+<title>One Label, Two Topics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; }
+[hidden] { display: none !important; }
+*, *::before, *::after { box-sizing: border-box; }
+/* Layout: a single column of numbered instrument modules (header strip + dial + readouts), like a row of synth modules on a grey chassis. */
+:root {
+  --chassis: #e4e4e0;
+  --panel: #f3f3f0;
+  --ink: #121211;
+  --mute: #6a6a65;
+  --rule: #c3c3bd;
+  --orange: #ff4f12;   /* the question, always */
+  --blue: #2a5cff;
+  --green: #17a058;
+  --yellow: #efb100;
+  --grey: #8f8f89;
+  --display: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --chassis: #121211; --panel: #1b1b1a; --ink: #ecece8; --mute: #95958e; --rule: #383835;
+    --orange: #ff6a33; --blue: #5b82ff; --green: #3cc47c; --yellow: #f5c234; --grey: #77776f; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --chassis: #121211; --panel: #1b1b1a; --ink: #ecece8; --mute: #95958e; --rule: #383835;
+  --orange: #ff6a33; --blue: #5b82ff; --green: #3cc47c; --yellow: #f5c234; --grey: #77776f; color-scheme: dark;
+}
+body {
+  background: var(--chassis); color: var(--ink);
+  font: 400 16px/1.55 var(--display);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+main { max-width: 960px; margin: 0 auto; padding-block: 48px 64px; display: grid; gap: 56px; }
+header { display: grid; gap: 16px; }
+.tag { font: 500 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--mute); }
+h1 {
+  font-family: var(--display); font-weight: 800; font-stretch: 72%;
+  font-size: clamp(46px, 9vw, 96px); line-height: .9; letter-spacing: -.02em; margin: 0; text-transform: uppercase;
+  text-wrap: balance;
+}
+h1 span { color: var(--orange); }
+.lede { font-size: 19px; max-width: 62ch; margin: 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font: 400 12px var(--mono); color: var(--mute); }
+.legend b { color: var(--ink); font-weight: 500; }
+section { display: grid; gap: 14px; }
+section > p { margin: 0; max-width: 64ch; }
+h2 { font: 700 clamp(24px, 3.6vw, 32px)/1.05 var(--display); font-stretch: 80%; margin: 0; text-wrap: balance; }
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--ink); border: 1px solid var(--ink); }
+.cards > div { background: var(--panel); padding: 20px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.cards .num { font: 800 44px/1 var(--display); font-stretch: 72%; font-variant-numeric: tabular-nums; }
+.cards .num.o { color: var(--orange); }
+.cards p { margin: 0; font-size: 14px; color: var(--mute); }
+.cards p b { color: var(--ink); font-weight: 600; }
+@media (max-width: 760px) { .cards { grid-template-columns: minmax(0, 1fr); } }
+footer { border-top: 1px solid var(--rule); padding-top: 16px; font: 400 12px/1.7 var(--mono); color: var(--mute); }
+footer a { color: var(--ink); }
+code { font-family: var(--mono); font-size: .92em; }
+search-folders:not(:defined), label-game:not(:defined), many-folders:not(:defined) {
+  display: block; min-height: 320px; border: 1px solid var(--rule); background: var(--panel);
+}
+</style>
+</head>
+<body>
+
+<main>
+  <header>
+    <div class="tag">RAG · vector search · proved in Lean 4</div>
+    <h1>One label can’t point <span>two ways</span></h1>
+    <p class="lede">A RAG system stores text chunks as vectors and sorts them into folders. To answer a question it doesn’t read every chunk. It compares the question with one label per folder, then opens the best-matching folders first. When a folder mixes two topics that point in opposite directions, its label can’t point at both, and the search opens the wrong folders first. The proof covers exactly that case: opposite directions in one folder. Topics that are merely different, which is the usual case in real embeddings, are not covered by it.</p>
+    <div class="legend">
+      <span><b>●</b> chunk of text</span>
+      <span><b>→</b> folder label (the folder’s average vector)</span>
+      <span style="color:var(--orange)"><b style="color:var(--orange)">●</b> your question</span>
+      <span>similar meaning = similar direction</span>
+    </div>
+  </header>
+
+  <section>
+    <search-folders></search-folders>
+  </section>
+
+  <section>
+    <label-game></label-game>
+  </section>
+
+  <section>
+    <many-folders></many-folders>
+  </section>
+
+  <section>
+    <div class="tag">04 · In practice</div>
+    <h2>What this means for real systems</h2>
+    <div class="cards">
+      <div><div class="num o">−7%</div><p><b>The boost knob, learned.</b> <code>ivf_tune</code> learns one boost per folder from real questions. On two 1M-vector benchmarks it cut search work by 6.7% and 7.3% at the same recall (6.0% and 8.7% when read at exactly 95% recall; one index build, and a second build gave smaller whole-probe gains), with no index rebuild.</p></div>
+      <div><div class="num">PR ≈38</div><p><b>Real folders are spread out.</b> Real folders are fuzzy clouds, not neat pairs: their spread has a participation ratio of about 38, a measure of how many directions share the variance. In our tests extra labels per folder cost more than they saved.</p></div>
+      <div><div class="num">1 → many</div><p><b>Multi-topic chunks.</b> A chunk that covers two topics gets one vector, an average that may match neither. Multi-vector retrieval (several vectors per document) is built to avoid this. Our proof is about a folder’s routing label, not a chunk’s embedding, and we haven’t measured either on RAG chunks.</p></div>
+    </div>
+  </section>
+
+  <footer>
+    The 2-D picture is the exact planar construction from the paper: k folders, each holding two opposite chunks; questions point at single chunks. Any one-label router (label + boost per folder) opens at least (k+3)/4 folders on average, and that bound is reached. Two labels per folder open 1. Formalized in Lean 4 (<a href="../IndexRecall/OneVectorImpossibility.lean">OneVectorImpossibility.lean</a>, <a href="../IndexRecall/OneVectorCircle.lean">OneVectorCircle.lean</a>; the project audits 1,323 theorem declarations). Not yet peer reviewed. <a href="../paper/main.pdf">Paper</a> · <a href="README.md#demos">other demos</a>
+  </footer>
+</main>
+
+<script type="module">
+import { LitElement, html, svg, css } from "https://cdn.jsdelivr.net/npm/lit@3.2.1/+esm";
+
+/* ---------- geometry ---------- */
+const R = 100;
+const rad = (d) => (d * Math.PI) / 180;
+const toDeg = (a) => ((a * 180) / Math.PI + 360) % 360;
+const P = (a, m = 1) => [Math.cos(a) * m * R, -Math.sin(a) * m * R];
+const unit = (a) => [Math.cos(a), Math.sin(a)];
+const dot = (p, q) => p[0] * q[0] + p[1] * q[1];
+const f2 = (v) => (v < 0 ? "−" : "+") + Math.abs(v).toFixed(2);
+
+function localAngle(svgEl, e) {
+  const m = svgEl.getScreenCTM();
+  if (!m) return [0, 0];
+  const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+  return [Math.atan2(-p.y, p.x), Math.min(1, Math.hypot(p.x, p.y) / R)];
+}
+
+function dialFace() {
+  const out = [];
+  for (let d = 0; d < 360; d += 10) {
+    const long = d % 90 === 0, mid = d % 30 === 0;
+    const [x1, y1] = P(rad(d), 1.03), [x2, y2] = P(rad(d), long ? 1.12 : mid ? 1.08 : 1.055);
+    out.push(svg`<line class=${long ? "tick long" : "tick"} x1=${x1} y1=${y1} x2=${x2} y2=${y2}></line>`);
+  }
+  for (const r of [0.33, 0.66]) out.push(svg`<circle class="grid" r=${r * R}></circle>`);
+  out.push(svg`<line class="grid" x1="-100" y1="0" x2="100" y2="0"></line><line class="grid" x1="0" y1="-100" x2="0" y2="100"></line>`);
+  return svg`${out}<circle class="ring" r=${R}></circle><rect class="origin" x="-3" y="-3" width="6" height="6"></rect>`;
+}
+
+function arrow(a, m, color, width = 2.6) {
+  const L = m * R;
+  const [x, y] = P(a, m);
+  if (L < 7) return svg`<circle r="4" style=${`fill:${color}`}></circle>`;
+  const h = Math.min(11, L * 0.5), ux = x / L, uy = y / L;
+  const bx = x - ux * h, by = y - uy * h, px = -uy * h * 0.42, py = ux * h * 0.42;
+  return svg`<line x1="0" y1="0" x2=${bx} y2=${by} style=${`stroke:${color};stroke-width:${width}`}></line>
+    <polygon points=${`${x},${y} ${bx + px},${by + py} ${bx - px},${by - py}`} style=${`fill:${color}`}></polygon>`;
+}
+
+function needle(a) {
+  const [x, y] = P(a, 1);
+  return svg`<line class="needle" x1="0" y1="0" x2=${x} y2=${y}></line><circle class="qdot" cx=${x} cy=${y} r="7"></circle>`;
+}
+
+function chunkDot(a, color, text, o = {}) {
+  const [x, y] = P(a, 1);
+  return svg`<g style=${o.dim ? "opacity:.28" : ""}>
+    ${o.current ? svg`<circle class="scanring" cx=${x} cy=${y} r="11"></circle>` : o.scanned ? svg`<circle class="scanned" cx=${x} cy=${y} r="8.5"></circle>` : ""}
+    ${o.answer ? svg`<circle class=${o.pop ? "answer pop" : "answer"} cx=${x} cy=${y} r="11"></circle>` : ""}
+    <circle cx=${x} cy=${y} r="5" style=${`fill:${color}`}><title>${text}</title></circle></g>`;
+}
+
+const REDUCED = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+
+/* Explicit phases. The search animation: IDLE shows the final result, PLAYING steps through the
+   chunks read, DONE shows the result with the answer highlighted. The solver: EDITING (you move the
+   labels), SOLVING (the optimiser owns the labels), SOLVED (results shown, labels editable again). */
+const PlayPhase = Object.freeze({ IDLE: "idle", PLAYING: "playing", DONE: "done" });
+const SolverPhase = Object.freeze({ EDITING: "editing", SOLVING: "solving", SOLVED: "solved" });
+const gauss = () => Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+function dialLabel(a, text, color, r = 1.2) {
+  const [x, y] = P(a, r), c = Math.cos(a), s = Math.sin(a);
+  const anchor = c > 0.3 ? "start" : c < -0.3 ? "end" : "middle";
+  const dy = s > 0.3 ? -1 : s < -0.3 ? 8 : 3.5;
+  return svg`<text class="flabel" x=${x} y=${y + dy} text-anchor=${anchor} style=${`fill:${color}`}>${text}</text>`;
+}
+
+/* ---------- shared styles ---------- */
+const shared = css`
+  :host { display: block; }
+  .module { background: var(--panel); border: 1px solid var(--ink); }
+  .strip { display: flex; align-items: stretch; border-bottom: 1px solid var(--ink); font: 500 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+  .strip .n { background: var(--ink); color: var(--panel); padding: 9px 12px; font-weight: 700; }
+  .strip .t { padding: 9px 12px; flex: 1; }
+  .strip .s { padding: 9px 12px; color: var(--mute); border-left: 1px solid var(--rule); }
+  .intro { padding: 18px 22px 0; display: grid; gap: 8px; }
+  .intro h2 { font: 700 clamp(22px, 3.4vw, 30px)/1.05 var(--display); font-stretch: 80%; margin: 0; text-wrap: balance; }
+  .intro p { margin: 0; max-width: 66ch; color: var(--mute); font: 400 15px/1.55 var(--display); }
+  .intro p b { color: var(--ink); font-weight: 600; }
+  .body { padding: 20px 22px 22px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 26px; align-items: start; }
+  @media (prefers-reduced-motion: reduce) { .answer.pop { animation: none; } }
+  @media (max-width: 760px) { .body { grid-template-columns: minmax(0, 1fr); padding: 16px; } .intro { padding: 16px 16px 0; } .strip .s { display: none; } }
+  .col { display: grid; gap: 16px; min-width: 0; }
+  svg { display: block; overflow: visible; }
+  svg.dial { width: 100%; max-width: 380px; margin: 0 auto; aspect-ratio: 1; touch-action: none; user-select: none; -webkit-user-select: none; cursor: crosshair; outline: none; }
+  svg.dial:focus-visible { outline: 2px solid var(--orange); outline-offset: 6px; }
+  .ring { fill: none; stroke: var(--ink); stroke-width: 1.4; }
+  .grid { fill: none; stroke: var(--rule); stroke-width: .7; stroke-dasharray: 1 3; }
+  .tick { stroke: var(--rule); stroke-width: 1; }
+  .tick.long { stroke: var(--ink); stroke-width: 1.4; }
+  .origin { fill: var(--ink); }
+  .needle { stroke: var(--orange); stroke-width: 1.6; stroke-dasharray: 3 3; }
+  .qdot { fill: var(--orange); }
+  .answer { fill: none; stroke: var(--orange); stroke-width: 2; }
+  .answer.pop { transform-box: fill-box; transform-origin: center; animation: pop .9s ease-out; }
+  @keyframes pop { 0% { transform: scale(1.9); stroke-width: 3.5; } 60% { transform: scale(.9); } 100% { transform: scale(1); } }
+  .scanned { fill: none; stroke: var(--ink); stroke-width: 1; }
+  .scanring { fill: none; stroke: var(--ink); stroke-width: 2.4; }
+  .playbtn { display: inline-flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--ink); padding: 8px 12px 8px 10px; color: var(--ink); font: 500 12px var(--mono); letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+  .playbtn .led { width: 12px; height: 12px; border-radius: 50%; background: var(--rule); flex: none; }
+  .playbtn.on .led { background: var(--orange); box-shadow: 0 0 8px var(--orange); }
+  .playbtn:disabled { cursor: default; }
+  .playbtn:hover:not(:disabled) { background: var(--ink); color: var(--panel); }
+  .flabel { font: 700 9px var(--mono); letter-spacing: .08em; }
+  .handle { fill: var(--panel); stroke-width: 2.4; cursor: grab; outline: none; }
+  .handle:focus-visible { stroke: var(--orange) !important; stroke-width: 3.5; }
+  .hit { fill: transparent; cursor: grab; }
+  .lbl { font: 500 10px/1.2 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--mute); }
+  .lcd { background: var(--ink); color: var(--panel); padding: 12px 14px; display: grid; gap: 6px; }
+  .lcd .lbl { color: var(--grey); }
+  .lcd .q { font: 500 16px/1.35 var(--mono); }
+  .lcd .q.o { color: var(--orange); }
+  .big { font: 800 60px/0.9 var(--display); font-stretch: 70%; font-variant-numeric: tabular-nums; }
+  .big small { font-size: 22px; color: var(--mute); font-weight: 600; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font: 500 12px/1 var(--mono); padding: 8px 10px; border: 1px solid var(--ink); background: var(--panel); color: var(--ink); cursor: pointer; border-radius: 0; }
+  .chip[aria-pressed="true"] { background: var(--orange); border-color: var(--orange); color: #fff; }
+  .chip:focus-visible, button:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+  .note { font: 400 14px/1.55 var(--display); color: var(--mute); margin: 0; }
+  .note b { color: var(--ink); font-weight: 600; }
+  .sw { width: 10px; height: 10px; display: inline-block; flex: none; }
+  .switch { display: inline-flex; align-items: center; gap: 10px; background: none; border: 1px solid var(--ink); padding: 8px 12px 8px 8px; color: var(--ink); font: 500 12px var(--mono); letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+  .switch .led { width: 12px; height: 12px; border-radius: 50%; background: var(--rule); }
+  .switch[aria-checked="true"] { background: var(--ink); color: var(--panel); }
+  .switch[aria-checked="true"] .led { background: var(--orange); box-shadow: 0 0 8px var(--orange); }
+  .knobs { display: flex; gap: 22px; flex-wrap: wrap; }
+`;
+
+/* ---------- knob ---------- */
+class TeKnob extends LitElement {
+  static properties = { value: { type: Number }, min: { type: Number }, max: { type: Number }, step: { type: Number }, label: {}, color: {}, format: { attribute: false } };
+  static styles = css`
+    :host { display: inline-grid; justify-items: center; gap: 6px; }
+    :host([hidden]) { display: none; }
+    svg { width: 64px; height: 64px; touch-action: none; cursor: ns-resize; outline: none; display: block; }
+    svg:focus-visible circle.cap { stroke: var(--orange); stroke-width: 2.5; }
+    .cap { fill: var(--panel); stroke: var(--ink); stroke-width: 1.4; }
+    .tk { stroke: var(--rule); stroke-width: 1.2; }
+    .tk.on { stroke: var(--ink); }
+    .val { font: 500 12px var(--mono); font-variant-numeric: tabular-nums; }
+    .lab { font: 500 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--mute); display: flex; gap: 6px; align-items: center; }
+    .sw { width: 8px; height: 8px; display: inline-block; }
+  `;
+  constructor() { super(); this.value = 0; this.min = -1; this.max = 1; this.step = 0.01; this.label = ""; this.color = "var(--ink)"; this.format = (v) => v.toFixed(2); }
+  set(v) {
+    v = Math.min(this.max, Math.max(this.min, Math.round(v / this.step) * this.step));
+    if (v === this.value) return;
+    this.value = v;
+    this.dispatchEvent(new CustomEvent("change", { detail: v }));
+  }
+  down(e) { e.preventDefault(); this._y = e.clientY; this._v = this.value; e.currentTarget.setPointerCapture(e.pointerId); }
+  move(e) { if (this._y == null) return; this.set(this._v + ((this._y - e.clientY) / 140) * (this.max - this.min)); }
+  up() { this._y = null; }
+  key(e) {
+    const s = e.shiftKey ? this.step * 10 : this.step;
+    if (e.key === "ArrowUp" || e.key === "ArrowRight") this.set(this.value + s);
+    else if (e.key === "ArrowDown" || e.key === "ArrowLeft") this.set(this.value - s);
+    else return;
+    e.preventDefault();
+  }
+  render() {
+    const t = (this.value - this.min) / (this.max - this.min);
+    const a0 = rad(225), sweep = rad(270), a = a0 - t * sweep;
+    const ticks = [];
+    for (let i = 0; i <= 10; i++) {
+      const ta = a0 - (i / 10) * sweep, c = Math.cos(ta), s = -Math.sin(ta);
+      ticks.push(svg`<line class=${i / 10 <= t + 1e-9 ? "tk on" : "tk"} x1=${32 + c * 26} y1=${32 + s * 26} x2=${32 + c * 30} y2=${32 + s * 30}></line>`);
+    }
+    return html`<svg viewBox="0 0 64 64" tabindex="0" role="slider" aria-label=${this.label}
+        aria-valuemin=${this.min} aria-valuemax=${this.max} aria-valuenow=${this.value}
+        @pointerdown=${this.down} @pointermove=${this.move} @pointerup=${this.up} @pointercancel=${this.up} @keydown=${this.key}>
+        ${ticks}<circle class="cap" cx="32" cy="32" r="20"></circle>
+        <line x1=${32 + Math.cos(a) * 6} y1=${32 - Math.sin(a) * 6} x2=${32 + Math.cos(a) * 17} y2=${32 - Math.sin(a) * 17}
+          style=${`stroke:${this.color};stroke-width:3;stroke-linecap:round`}></line>
+      </svg>
+      <span class="val">${this.format(this.value)}</span>
+      <span class="lab"><span class="sw" style=${`background:${this.color}`}></span>${this.label}</span>`;
+  }
+}
+customElements.define("te-knob", TeKnob);
+
+/* ---------- 01: how search picks a folder ---------- */
+const FOLDERS = [
+  { name: "TRAVEL", color: "var(--blue)", tags: [70], chunks: [["Tokyo in five days", 62], ["Cheap flight hacks", 70], ["Japan rail pass guide", 78]] },
+  { name: "HEALTH", color: "var(--green)", tags: [150], chunks: [["Stretches for back pain", 142], ["Sleep and recovery", 150], ["Hydration myths", 158]] },
+  { name: "MONEY", color: "var(--yellow)", tags: [250], chunks: [["Index funds explained", 242], ["Taxes on side income", 250], ["Emergency fund basics", 258]] },
+  { name: "WORK", color: "var(--grey)", tags: [330], chunks: [["Writing a cover letter", 322], ["Salary negotiation", 330], ["Remote work setup", 338]] },
+  { name: "KITCHEN+GARAGE", short: "MIXED", color: "var(--ink)", mixed: true, tags: [19, 201], chunks: [["Sourdough starter basics", 14], ["Why bread doesn’t rise", 24], ["Engine knock on a cold start", 196], ["Changing spark plugs", 206]] },
+];
+for (const f of FOLDERS) {
+  const s = f.chunks.reduce((acc, [, d]) => [acc[0] + Math.cos(rad(d)), acc[1] + Math.sin(rad(d))], [0, 0]);
+  f.label = [s[0] / f.chunks.length, s[1] / f.chunks.length];
+}
+const QUESTIONS = [
+  ["Why didn’t my bread rise?", 22],
+  ["My engine knocks when it’s cold", 199],
+  ["Cheapest way to get to Tokyo?", 68],
+  ["How do index funds work?", 243],
+];
+
+class SearchFolders extends LitElement {
+  static styles = shared;
+  static properties = { q: { state: true }, preset: { state: true }, play: { state: true } };
+  constructor() {
+    super();
+    this.q = rad(22);
+    this.preset = 0;
+    this._drag = false;
+    this.play = { phase: PlayPhase.IDLE, steps: [], t: 0 };
+  }
+  firstUpdated() {
+    // Play the search once when the module first scrolls into view.
+    if (!("IntersectionObserver" in window)) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) { io.disconnect(); this.run(); }
+    }, { threshold: 0.45 });
+    io.observe(this);
+  }
+  disconnectedCallback() { super.disconnectedCallback(); clearTimeout(this._timer); }
+  stop() { clearTimeout(this._timer); this.play = { phase: PlayPhase.IDLE, steps: [], t: 0 }; }
+  setQ(e) { const [a] = localAngle(this.renderRoot.querySelector("svg.dial"), e); this.q = a; this.preset = -1; }
+  down(e) { e.preventDefault(); this.stop(); this._drag = true; e.currentTarget.setPointerCapture(e.pointerId); this.setQ(e); }
+  move(e) { if (this._drag) this.setQ(e); }
+  up() { if (this._drag) { this._drag = false; this.run(); } }
+  key(e) {
+    if (e.key === "ArrowLeft" || e.key === "ArrowUp") this.q += rad(5);
+    else if (e.key === "ArrowRight" || e.key === "ArrowDown") this.q -= rad(5);
+    else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); this.run(); return; }
+    else return;
+    e.preventDefault(); this.stop(); this.preset = -1;
+  }
+  pick(i) { this.q = rad(QUESTIONS[i][1]); this.preset = i; this.run(); }
+  compute() {
+    const qv = unit(this.q);
+    let best = null;
+    for (const f of FOLDERS) for (const [text, d] of f.chunks) {
+      const s = dot(qv, unit(rad(d)));
+      if (!best || s > best.s) best = { s, text, d, folder: f };
+    }
+    const ranked = FOLDERS.map((f) => ({ f, s: dot(qv, f.label) })).sort((a, b) => b.s - a.s);
+    const pos = ranked.findIndex((r) => r.f === best.folder) + 1;
+    return { best, ranked, pos };
+  }
+  /* Step through the search: open folders in label order and read every chunk in each. */
+  run() {
+    clearTimeout(this._timer);
+    if (REDUCED) { this.stop(); return; }
+    const { ranked, pos } = this.compute();
+    const steps = [];
+    ranked.slice(0, pos).forEach((r, i) => r.f.chunks.forEach(([text]) => steps.push({ i, text })));
+    this.play = { phase: PlayPhase.PLAYING, steps, t: 0 };
+    this._timer = setTimeout(() => this.tick(), 380);
+  }
+  /* PLAYING -> PLAYING (one more chunk read) or DONE (last chunk read). */
+  tick() {
+    const { steps } = this.play;
+    const t = this.play.t + 1;
+    const phase = t >= steps.length ? PlayPhase.DONE : PlayPhase.PLAYING;
+    this.play = { phase, steps, t };
+    if (phase === PlayPhase.PLAYING) this._timer = setTimeout(() => this.tick(), steps[t].i !== steps[t - 1].i ? 420 : 190);
+  }
+  render() {
+    const { best, ranked, pos } = this.compute();
+    const { phase, steps, t } = this.play;
+    const live = phase === PlayPhase.PLAYING;
+    const openedIdx = live ? (t > 0 ? steps[t - 1].i : -1) : pos - 1;
+    const read = live ? t : ranked.slice(0, pos).reduce((n, r) => n + r.f.chunks.length, 0);
+    const scanned = new Set(live ? steps.slice(0, t).map((x) => x.text) : []);
+    const current = live && t > 0 ? steps[t - 1].text : null;
+    const openedFolders = new Set(ranked.slice(0, openedIdx + 1).map((r) => r.f));
+    const found = !live;
+    const qtext = this.preset >= 0 ? `“${QUESTIONS[this.preset][0]}”` : `Your question · ${Math.round(toDeg(this.q))}°`;
+    const X = (v) => 50 + v * 50;
+    return html`
+      <style>
+        .rank { display: grid; gap: 4px; }
+        .row { display: grid; grid-template-columns: 1.6em 1fr 96px; gap: 10px; align-items: center; font: 400 12px var(--mono); padding: 5px 0; border-bottom: 1px solid var(--rule); }
+        .row .nm { display: flex; gap: 8px; align-items: center; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .row.hit .nm::after { content: "ANSWER"; color: var(--orange); font-weight: 700; letter-spacing: .1em; font-size: 10px; }
+        .row.open { font-weight: 500; }
+        .row.scan { background: var(--ink); color: var(--panel); }
+        .row { padding-inline: 6px; margin-inline: -6px; transition: background .15s; }
+        .row:not(.open) { color: var(--mute); }
+        .bar0 { stroke: var(--rule); }
+        .stats { display: flex; gap: 28px; flex-wrap: wrap; align-items: end; }
+      </style>
+      <div class="module">
+        <div class="strip"><span class="n">01</span><span class="t">How search picks a folder</span><span class="s">drag the dial</span></div>
+        <div class="intro">
+          <h2>A mixed folder’s label points at nothing</h2>
+          <p>Pick a question, or drag anywhere on the dial. The search scores each folder by how closely its label points at the question, then opens folders in that order until it reaches the folder with the best chunk. The <b>Kitchen+Garage</b> folder holds baking and car repair, which point in opposite directions. Their average almost cancels out, so its label is a stub.</p>
+        </div>
+        <div class="body">
+          <div class="col">
+            <svg class="dial" viewBox="-160 -150 320 300" tabindex="0" role="img" aria-label="Embedding dial. Drag or use arrow keys to move the question."
+              @pointerdown=${this.down} @pointermove=${this.move} @pointerup=${this.up} @pointercancel=${this.up} @keydown=${this.key}>
+              ${dialFace()}
+              ${FOLDERS.map((f) => f.tags.map((t) => dialLabel(rad(t), f.short || f.name, f.color)))}
+              ${FOLDERS.map((f) => arrow(Math.atan2(f.label[1], f.label[0]), Math.hypot(...f.label), f.color, 2.2))}
+              ${needle(this.q)}
+              ${FOLDERS.map((f) => f.chunks.map(([txt, d]) => chunkDot(rad(d), f.color, txt, {
+                answer: found && txt === best.text, pop: phase === PlayPhase.DONE && txt === best.text,
+                scanned: scanned.has(txt), current: txt === current, dim: live && !openedFolders.has(f) })))}
+            </svg>
+            <div class="chips">
+              ${QUESTIONS.map(([t, d], i) => html`<button class="chip" aria-pressed=${String(this.preset === i)}
+                @click=${() => this.pick(i)}>${t}</button>`)}
+            </div>
+          </div>
+          <div class="col">
+            <div class="lcd">
+              <span class="lbl">Question</span>
+              <span class="q o">${qtext}</span>
+              <span class="lbl">Best chunk</span>
+              <span class="q">${best.text} <span style="color:var(--grey)">· ${best.folder.name}</span></span>
+            </div>
+            <div class="stats">
+              <div><div class="lbl">Folders opened</div><div class="big">${openedIdx + 1}<small> / ${FOLDERS.length}</small></div></div>
+              <div><div class="lbl">Chunks read</div><div class="big">${read}<small> / 16</small></div></div>
+              <button class=${"playbtn" + (live ? " on" : "")} @click=${() => this.run()}><span class="led"></span>${live ? "Searching…" : "Run search"}</button>
+            </div>
+            <div class="rank">
+              <div class="lbl">Search order (label score)</div>
+              ${ranked.map((r, i) => html`<div class=${"row" + (i <= openedIdx ? " open" : "") + (live && i === openedIdx ? " scan" : "") + (found && r.f === best.folder ? " hit" : "")}>
+                <span>${i + 1}</span>
+                <span class="nm"><span class="sw" style=${`background:${r.f.color}`}></span>${r.f.name}</span>
+                <svg viewBox="0 0 100 10" preserveAspectRatio="none" style="width:96px;height:10px">
+                  <line class="bar0" x1="50" y1="0" x2="50" y2="10"></line>
+                  <rect x=${Math.min(X(0), X(r.s))} y="2" height="6" width=${Math.max(1, Math.abs(r.s) * 50)} style=${`fill:${r.f.color}`}></rect>
+                </svg>
+              </div>`)}
+            </div>
+            <p class="note" aria-live="polite">${live
+              ? html`Searching… opening folder <b>#${openedIdx + 1}</b>, ${ranked[Math.max(0, openedIdx)].f.name}, and reading its chunks.`
+              : best.folder.mixed
+              ? html`The answer is in the mixed folder, but its stub label ranks it <b>#${pos}</b>. A folder about baking alone would have been opened first.`
+              : html`The answer’s folder is about one topic, so its label points right at the question and it opens <b>#${pos}</b>.`}</p>
+          </div>
+        </div>
+      </div>`;
+  }
+}
+
+/* ---------- 02: the label game ---------- */
+const GAME = [
+  { key: "A", name: "KITCHEN+GARAGE", color: "var(--blue)", u: 20, topics: [["Why didn’t my bread rise?", "Bread"], ["My engine knocks when cold", "Engine"]] },
+  { key: "B", name: "TRAVEL+TAXES", color: "var(--green)", u: 100, topics: [["Cheapest way to Tokyo?", "Tokyo"], ["Do I owe tax on side income?", "Taxes"]] },
+];
+
+class LabelGame extends LitElement {
+  static styles = shared;
+  static properties = { arrows: { state: true }, boost: { state: true }, two: { state: true }, _drag: { state: true },
+    solver: { state: true } };
+  constructor() {
+    super();
+    this.arrows = { A: [rad(20), 0.8], B: [rad(100), 0.8] };
+    this.boost = { A: 0, B: 0 };
+    this.two = false;  // view: score each folder by its two topic directions instead of one label
+    this.solver = { phase: SolverPhase.EDITING, hist: null, tries: 0, bestFound: 0 };
+  }
+  get solving() { return this.solver.phase === SolverPhase.SOLVING; }
+  disconnectedCallback() { super.disconnectedCallback(); cancelAnimationFrame(this._raf); clearTimeout(this._flip); }
+  /* Search the whole space of labels and boosts: annealing plus random restarts, 20,000 tries, shown live. */
+  solve() {
+    if (this.solving) return;  // SOLVING ignores a second start
+    clearTimeout(this._flip);
+    this.two = false;
+    const qs = [];
+    for (const f of GAME) [0, 180].forEach((off) => qs.push({ own: f.key, v: unit(rad(f.u + off)) }));
+    const evaluate = (c) => {
+      let found = 0, obj = 0;
+      for (const q of qs) {
+        const sA = dot(q.v, unit(c.aA)) * c.mA + c.bA, sB = dot(q.v, unit(c.aB)) * c.mB + c.bB;
+        const margin = q.own === "A" ? sA - sB : sB - sA;
+        if (margin > 1e-9) found++;
+        obj += Math.tanh(margin / 0.15);
+      }
+      return { found, obj };
+    };
+    const random = () => ({ aA: Math.random() * 2 * Math.PI, mA: Math.random(), aB: Math.random() * 2 * Math.PI, mB: Math.random(),
+      bA: Math.random() * 2 - 1, bB: Math.random() * 2 - 1 });
+    const nudge = (c, s) => ({ aA: c.aA + gauss() * 0.6 * s, mA: clamp(c.mA + gauss() * 0.2 * s, 0, 1),
+      aB: c.aB + gauss() * 0.6 * s, mB: clamp(c.mB + gauss() * 0.2 * s, 0, 1),
+      bA: clamp(c.bA + gauss() * 0.3 * s, -1, 1), bB: clamp(c.bB + gauss() * 0.3 * s, -1, 1) });
+    let cur = { aA: this.arrows.A[0], mA: this.arrows.A[1], aB: this.arrows.B[0], mB: this.arrows.B[1], bA: this.boost.A, bB: this.boost.B };
+    let curR = evaluate(cur), best = cur, bestR = curR;
+    const hist = [0, 0, 0, 0, 0];
+    const TOTAL = 20000, FRAMES = REDUCED ? 1 : 160, PER = Math.ceil(TOTAL / FRAMES);
+    let frame = 0, tries = 0;
+    this.solver = { phase: SolverPhase.SOLVING, hist: [...hist], tries: 0, bestFound: bestR.found };
+    const show = (c) => {
+      this.arrows = { A: [c.aA, c.mA], B: [c.aB, c.mB] };
+      this.boost = { A: Math.round(c.bA * 100) / 100, B: Math.round(c.bB * 100) / 100 };
+    };
+    const step = () => {
+      const temp = 0.6 * Math.pow(0.03, frame / FRAMES);
+      for (let i = 0; i < PER && tries < TOTAL; i++, tries++) {
+        const cand = Math.random() < 0.12 ? random() : nudge(cur, 0.2 + temp);
+        const r = evaluate(cand);
+        hist[r.found]++;
+        if (r.obj > curR.obj || Math.random() < Math.exp((r.obj - curR.obj) / temp)) { cur = cand; curR = r; }
+        if (r.found > bestR.found || (r.found === bestR.found && r.obj > bestR.obj)) { best = cand; bestR = r; }
+      }
+      frame++;
+      const done = tries >= TOTAL;
+      this.solver = { phase: done ? SolverPhase.SOLVED : SolverPhase.SOLVING, hist: [...hist], tries, bestFound: bestR.found };
+      if (!done) { show(cur); this._raf = requestAnimationFrame(step); return; }
+      show(best);
+      if (REDUCED) this.two = true;
+      else this._flip = setTimeout(() => (this.two = true), 1600);
+    };
+    if (REDUCED) step();  // no animation: run all tries now
+    else this._raf = requestAnimationFrame(step);
+  }
+  svgEl() { return this.renderRoot.querySelector("svg.dial"); }
+  down(e, k) { if (this.solving) return; e.preventDefault(); e.stopPropagation(); this._drag = k; this.svgEl().setPointerCapture(e.pointerId); this.move(e); }
+  move(e) {
+    if (!this._drag) return;
+    const [a, m] = localAngle(this.svgEl(), e);
+    this.arrows = { ...this.arrows, [this._drag]: [a, m] };
+  }
+  key(e, k) {
+    let [a, m] = this.arrows[k];
+    if (e.key === "ArrowLeft") a += rad(5);
+    else if (e.key === "ArrowRight") a -= rad(5);
+    else if (e.key === "ArrowUp") m = Math.min(1, m + 0.05);
+    else if (e.key === "ArrowDown") m = Math.max(0, m - 0.05);
+    else return;
+    e.preventDefault();
+    this.arrows = { ...this.arrows, [k]: [a, m] };
+  }
+  score(f, q) {
+    const u = unit(rad(f.u));
+    if (this.two) return Math.abs(dot(q, u));
+    const [a, m] = this.arrows[f.key];
+    return dot(q, unit(a)) * m + this.boost[f.key];
+  }
+  handle(f) {
+    const [a, m] = this.arrows[f.key];
+    const [x, y] = P(a, m);
+    return svg`<circle class="hit" cx=${x} cy=${y} r="22" @pointerdown=${(e) => this.down(e, f.key)}></circle>
+      <circle class="handle" cx=${x} cy=${y} r="9" tabindex="0" role="slider" aria-label=${`${f.name} label`}
+        aria-valuetext=${`points at ${Math.round(toDeg(a))} degrees, length ${m.toFixed(2)}`}
+        style=${`stroke:${f.color}`} @pointerdown=${(e) => this.down(e, f.key)} @keydown=${(e) => this.key(e, f.key)}></circle>`;
+  }
+  histogram() {
+    const h = this.solver.hist, max = Math.max(...h, 1);
+    const W = 300, H = 96, bw = 46, gap = 13, x0 = 8;
+    return html`<div class="hist">
+      <svg viewBox=${`0 0 ${W} ${H + 34}`} style="width:100%;max-width:340px" role="img"
+        aria-label=${`Of ${this.solver.tries} tries, ${h.map((c, i) => `${c} reached ${i} of 4`).join(", ")}.`}>
+        ${h.map((c, i) => {
+          const x = x0 + i * (bw + gap), hh = c ? Math.max(3, Math.sqrt(c / max) * H) : 0;
+          return svg`${i === 4
+              ? svg`<rect class="hnever" x=${x} y="4" width=${bw} height=${H - 4}></rect>
+                    <text class="hnum o" x=${x + bw / 2} y=${H / 2 + 4} text-anchor="middle">${c ? c : "NEVER"}</text>`
+              : svg`<rect class=${i === 3 ? "hbar top" : "hbar"} x=${x} y=${H - hh} width=${bw} height=${hh}></rect>
+                    <text class="hnum" x=${x + bw / 2} y=${Math.max(10, H - hh - 5)} text-anchor="middle">${c.toLocaleString("en-US")}</text>`}
+            <text class="hlab" x=${x + bw / 2} y=${H + 16} text-anchor="middle">${i}/4</text>`;
+        })}
+        <text class="hlab" x=${x0} y=${H + 31}>TRIES BY QUESTIONS WON</text>
+      </svg>
+      <p class="note">${this.solving
+        ? html`Searching…`
+        : html`<b>${this.solver.tries.toLocaleString("en-US")} tries. Best: ${this.solver.bestFound} of 4.</b> Not one reached 4/4, and none can: that’s the theorem. ${this.two ? "Two labels per folder get 4/4 at once." : "Watch what two labels do."}`}</p>
+    </div>`;
+  }
+  render() {
+    const [A, B] = GAME;
+    const qs = [];
+    for (const f of GAME) f.topics.forEach(([text, short], i) => qs.push({ f, text, short, a: rad(f.u + (i ? 180 : 0)) }));
+    const rows = qs.map((Q) => {
+      const v = unit(Q.a), sA = this.score(A, v), sB = this.score(B, v);
+      const own = Q.f === A ? sA : sB, other = Q.f === A ? sB : sA;
+      return { ...Q, sA, sB, ok: own > other + 1e-9 };
+    });
+    const found = rows.filter((r) => r.ok).length;
+    const lead = 2 * (this.boost.A - this.boost.B);
+    const X = (v) => 80 + v * 40;
+    const hbar = (v, y, c) => svg`<rect x=${Math.min(X(0), X(v))} y=${y} height="6" width=${Math.max(1, Math.abs(v) * 40)} style=${`fill:${c}`}></rect>`;
+    const dial = svg`
+      ${dialFace()}
+      ${this.two
+        ? GAME.map((f) => svg`${arrow(rad(f.u), 1, f.color, 2.2)}${arrow(rad(f.u + 180), 1, f.color, 2.2)}`)
+        : GAME.map((f) => arrow(...this.arrows[f.key], f.color))}
+      ${qs.map((Q) => { const [x, y] = P(Q.a, 1), [lx, ly] = P(Q.a, 1.2);
+        return svg`<circle class="answer" cx=${x} cy=${y} r="10"></circle><circle cx=${x} cy=${y} r="5" style=${`fill:${Q.f.color}`}></circle>
+          ${dialLabel(Q.a, Q.short.toUpperCase(), "var(--orange)")}`; })}
+      ${this.two ? "" : GAME.map((f) => this.handle(f))}`;
+    return html`
+      <style>
+        .qrow { display: grid; grid-template-columns: minmax(0, 1fr) 120px 64px; gap: 10px; align-items: center; font: 400 12px var(--mono); padding: 6px 0; border-bottom: 1px solid var(--rule); }
+        .qrow .qt { color: var(--orange); min-width: 0; }
+        .pill { font: 700 10px/1 var(--mono); letter-spacing: .1em; padding: 6px 0; text-align: center; }
+        .pill.ok { background: var(--ink); color: var(--panel); }
+        .pill.no { border: 1px solid var(--rule); color: var(--mute); }
+        .axis0 { stroke: var(--rule); }
+        .why { border-top: 1px solid var(--ink); padding-top: 12px; display: grid; gap: 6px; }
+        .eq { font: 400 12px/1.6 var(--mono); color: var(--mute); }
+        .legend2 { display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: center; font: 500 11px var(--mono); letter-spacing: .06em; }
+        .legend2 > span { display: inline-flex; gap: 7px; align-items: center; }
+        .legend2 .dim { color: var(--mute); font-weight: 400; letter-spacing: 0; }
+        .solver { border-top: 1px solid var(--ink); padding-top: 12px; display: grid; gap: 10px; justify-items: start; }
+        .hist { display: grid; gap: 6px; width: 100%; }
+        .hbar { fill: var(--rule); }
+        .hbar.top { fill: var(--ink); }
+        .hnever { fill: none; stroke: var(--orange); stroke-width: 1.4; stroke-dasharray: 4 3; }
+        .hnum { font: 500 10px var(--mono); fill: var(--ink); font-variant-numeric: tabular-nums; }
+        .hnum.o { fill: var(--orange); font-weight: 700; letter-spacing: .08em; }
+        .hlab { font: 500 10px var(--mono); fill: var(--mute); letter-spacing: .08em; }
+      </style>
+      <div class="module">
+        <div class="strip"><span class="n">02</span><span class="t">Fix the labels</span><span class="s">drag arrows · turn knobs</span></div>
+        <div class="intro">
+          <h2>Get all four questions to open the right folder first</h2>
+          <p>Say the folders are already built and you can’t move chunks. All you can change is each folder’s <b>label</b> (drag its arrow) and a <b>boost</b> added to its score (turn its knob). Each folder holds two opposite topics. A question wins when its own folder scores highest.</p>
+        </div>
+        <div class="body">
+          <div class="col">
+            <svg class="dial" viewBox="-160 -150 320 300" role="img" aria-label="Two mixed folders and their labels"
+              @pointermove=${(e) => this.move(e)} @pointerup=${() => (this._drag = null)} @pointercancel=${() => (this._drag = null)}>${dial}</svg>
+            <div class="legend2">
+              ${GAME.map((f) => html`<span><span class="sw" style=${`background:${f.color}`}></span>${f.name}<span class="dim">${f.topics.map((t) => t[1].toLowerCase()).join(" + ")}</span></span>`)}
+            </div>
+            <div class="knobs">
+              ${GAME.map((f) => html`<te-knob .value=${this.boost[f.key]} label=${"Boost " + f.key} color=${f.color} ?hidden=${this.two}
+                .format=${f2} @change=${(e) => { if (!this.solving) this.boost = { ...this.boost, [f.key]: e.detail }; }}></te-knob>`)}
+              <div style="display:grid;align-content:center">
+                <button class="switch" role="switch" aria-checked=${String(this.two)} ?disabled=${this.solving} @click=${() => { clearTimeout(this._flip); this.two = !this.two; }}>
+                  <span class="led"></span>Two labels per folder
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div>
+              <div class="lbl">Questions that open the right folder first</div>
+              <div class="big" aria-live="polite" style=${found === 4 ? "color:var(--orange)" : ""}>${found}<small> / 4</small></div>
+            </div>
+            <div>
+              ${rows.map((r) => html`<div class="qrow">
+                <span class="qt">${r.text}</span>
+                <svg viewBox="0 0 160 16" preserveAspectRatio="none" style="width:120px;height:16px"
+                  aria-label=${`${A.name} ${r.sA.toFixed(2)}, ${B.name} ${r.sB.toFixed(2)}`}>
+                  <line class="axis0" x1="80" y1="0" x2="80" y2="16"></line>
+                  ${hbar(r.sA, 1, A.color)}${hbar(r.sB, 9, B.color)}
+                </svg>
+                <span class=${"pill " + (r.ok ? "ok" : "no")}>${r.ok ? "FIRST" : "MISSED"}</span>
+              </div>`)}
+            </div>
+            <div class="solver">
+              <button class=${"playbtn" + (this.solving ? " on" : "")} ?disabled=${this.solving} @click=${() => this.solve()}>
+                <span class="led"></span>${this.solving ? `Trying… ${this.solver.tries.toLocaleString("en-US")}` : this.solver.hist ? "Let the computer try again" : "Let the computer try"}
+              </button>
+              ${this.solver.hist ? this.histogram() : html`<p class="note">Stuck at 3? Hand it to an optimiser: it will try 20,000 combinations of labels and boosts.</p>`}
+            </div>
+            <div class="why">
+              <div class="lbl">Why you can’t win</div>
+              ${this.two
+                ? html`<p class="note">With two labels, a folder scores a question by whichever label points closer. Nothing cancels, so <b>every question opens its own folder first.</b> This is the idea behind multi-vector retrieval.</p>`
+                : html`<p class="note">Turning a label toward baking turns it away from car repair <b>by exactly the same amount</b>. So the two scores a folder gets on its own questions always average to its boost. Whichever folder has the smaller boost loses one of its own questions. <b>The best you can do is 3 of 4.</b></p>
+                  <div class="eq">blue’s lead on its 2 questions = 2 × (boost A − boost B) = ${f2(lead)} · green’s = ${f2(-lead)}</div>`}
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+}
+
+/* ---------- 03: many folders ---------- */
+class ManyFolders extends LitElement {
+  static styles = shared;
+  static properties = { k: { state: true } };
+  constructor() { super(); this.k = 8; }
+  ranks(k) {
+    const out = [];
+    for (let i = 0; i < k; i++) for (const e of [1, -1]) {
+      let r = 1;
+      for (let l = i + 1; l < k; l++) if (((l - i) % 2 === 1 ? 1 : -1) === e) r++;
+      out.push(r);
+    }
+    return out;
+  }
+  render() {
+    const k = this.k, rs = this.ranks(k), avg = (k + 3) / 4, worst = Math.floor(k / 2) + 1;
+    const W = 600, H = 230, L = 34, Rm = 10, T = 10, Bm = 30, YMAX = 11;
+    const pw = W - L - Rm, ph = H - T - Bm, cell = ph / YMAX, gap = 5;
+    const colW = (pw - gap * (k - 1)) / (2 * k);
+    const y = (v) => T + ph - v * cell;
+    const cells = [];
+    rs.forEach((r, j) => {
+      const x = L + j * colW + Math.floor(j / 2) * gap;
+      for (let c = 0; c < r; c++)
+        cells.push(svg`<rect x=${x + 1} y=${y(c + 1) + 1} width=${Math.max(1, colW - 2)} height=${cell - 2}
+          class=${c === r - 1 ? "hc" : "c"}></rect>`);
+    });
+    const ticks = [];
+    for (let v = 1; v <= YMAX; v += 2) ticks.push(svg`<text class="tk" x=${L - 10} y=${y(v) + cell / 2 + 4} text-anchor="end">${v}</text>`);
+    const scale = [1e4, 1e6, 1e8].map((N) => { const s = Math.sqrt(N); return { N, one: (N + 7 * s) / 4, two: 3 * s }; });
+    const fmt = (v) => Math.round(v).toLocaleString("en-US");
+    return html`
+      <style>
+        .c { fill: var(--rule); }
+        .hc { fill: var(--ink); }
+        .tk, .xl { font: 400 13px var(--mono); fill: var(--mute); }
+        .avg { stroke: var(--ink); stroke-dasharray: 4 3; stroke-width: 1.4; }
+        .two { stroke: var(--orange); stroke-width: 2.6; }
+        .lab { font: 700 10px var(--mono); letter-spacing: .06em; }
+        .wide { grid-column: 1 / -1; }
+        .key { display: flex; flex-wrap: wrap; gap: 6px 18px; font: 500 11px var(--mono); color: var(--mute); }
+        .key > span { display: inline-flex; gap: 7px; align-items: center; }
+        .kb { width: 10px; height: 10px; background: var(--ink); display: inline-block; }
+        .kb.g { background: var(--rule); }
+        .kl { width: 18px; border-top: 1.6px dashed var(--ink); display: inline-block; }
+        .kl.o { border-top: 2.6px solid var(--orange); }
+        .scroll { overflow-x: auto; }
+        .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--ink); border: 1px solid var(--ink); }
+        .stats > div { background: var(--panel); padding: 12px; display: grid; gap: 4px; min-width: 0; }
+        .stats .big { font-size: 44px; }
+        .top { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+        table { border-collapse: collapse; width: 100%; font: 400 12px var(--mono); font-variant-numeric: tabular-nums; }
+        th, td { text-align: right; padding: 6px 0 6px 12px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+        th:first-child, td:first-child { text-align: left; padding-left: 0; }
+        th { font-weight: 500; color: var(--mute); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+        @media (max-width: 760px) { .stats { grid-template-columns: minmax(0, 1fr); } }
+      </style>
+      <div class="module">
+        <div class="strip"><span class="n">03</span><span class="t">More folders</span><span class="s">turn the knob</span></div>
+        <div class="intro">
+          <h2>Every pair of folders repeats the trap</h2>
+          <p>With <b>k</b> mixed folders, the trap from step 02 happens between every pair of folders. The chart uses the best labels and boosts there are: the ones proved to reach the lower bound exactly. Each column is one question. Each block is a folder opened before reaching its answer.</p>
+        </div>
+        <div class="body">
+          <div class="col wide">
+            <div class="top">
+              <te-knob .value=${k} min="2" max="20" step="1" label="Folders k" .format=${(v) => String(v)} @change=${(e) => (this.k = e.detail)}></te-knob>
+              <p class="note" style="max-width:46ch">One label per folder: the average grows with k. Two labels per folder: always 1, for every question.</p>
+            </div>
+            <div class="scroll">
+              <svg viewBox=${`0 0 ${W} ${H}`} style="width:100%;max-width:720px" role="img"
+                aria-label=${`With ${k} folders the best one-label search opens ${avg.toFixed(2)} folders on average; two labels open 1.`}>
+                ${ticks}${cells}
+                <line class="avg" x1=${L} x2=${L + pw} y1=${y(avg)} y2=${y(avg)}></line>
+                <line class="two" x1=${L} x2=${L + pw} y1=${y(1)} y2=${y(1)}></line>
+                <text class="xl" x=${L} y=${H - 8}>${2 * k} QUESTIONS · 2 PER FOLDER</text>
+              </svg>
+            </div>
+            <div class="key">
+              <span><span class="kb"></span>folder opened, answer found</span>
+              <span><span class="kb g"></span>folder opened, no answer</span>
+              <span><span class="kl"></span>average ${avg.toFixed(2)}</span>
+              <span style="color:var(--orange)"><span class="kl o"></span>two labels: 1</span>
+            </div>
+            <div class="stats">
+              <div><span class="lbl">1 label · average</span><span class="big">${avg.toFixed(2)}</span><span class="note">folders opened, at best: (k+3)/4</span></div>
+              <div><span class="lbl">1 label · every question</span><span class="big">${worst}</span><span class="note">folders to open so every question finds its answer: ⌊k/2⌋+1</span></div>
+              <div><span class="lbl">2 labels</span><span class="big" style="color:var(--orange)">1</span><span class="note">folder, every question</span></div>
+            </div>
+            <div>
+              <div class="lbl" style="margin-bottom:6px">Scaled up: N chunks in √N folders, counting every comparison</div>
+              <div class="scroll"><table>
+                <thead><tr><th>Chunks N</th><th>1 label, at least</th><th>2 labels</th><th>Ratio</th></tr></thead>
+                <tbody>${scale.map((s) => html`<tr><td>${fmt(s.N)}</td><td>${fmt(s.one)}</td><td>${fmt(s.two)}</td><td>${(s.one / s.two).toFixed(0)}×</td></tr>`)}</tbody>
+              </table></div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+}
+
+customElements.define("search-folders", SearchFolders);
+customElements.define("label-game", LabelGame);
+customElements.define("many-folders", ManyFolders);
+</script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+{
+  "environment": {
+    "python": "3.12.16",
+    "faiss": "1.12.0",
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "architecture": "arm64",
+    "faiss_threads": 1,
+    "emeans_commit": "2b648f0605f2ef3d14c4705350f8a0b214463878",
+    "emeans_source_sha256": {
+      "__init__.py": "ad196786de8eb8ab7a229908b86ad8548a72459ade95e9e9c3275943dd50bb78",
+      "base.py": "bcffd7829ebfc25e1354308770b49e6f99d8566ba5e474a41a22e9ec414b17cd",
+      "e_means.py": "b1710504fdbef21efdd33d8489a56f8e7fc6056182afbed3f355985302c2e77c",
+      "e_means_spherical.py": "d4e4177593f70e284bd2f6ad8812170e2a830ea62c697c514edc6298a00ea7a6"
+    }
+  },
+  "seeds_inclusive": [
+    0,
+    99
+  ],
+  "epochs": 5,
+  "spherical": true,
+  "unused_threshold": 0,
+  "init_centroids": null,
+  "seed_ids_observed_at_begin": true,
+  "all_epochs_visit_each_document_once": true,
+  "observed_replay_matches_uninstrumented": true,
+  "fresh_assignments_match_native_ivf_lists": true,
+  "seed_event_target_intact_all_epochs_and_final": true,
+  "cases": [
+    {
+      "k": 4,
+      "documents": 16,
+      "dimension": 21,
+      "t": 6.25e-05,
+      "winner_id": 0,
+      "batch_size": 16,
+      "alpha0": 1.0,
+      "seed_event": 36,
+      "seed_event_and_strict_last": 36,
+      "strict_last_outside_event": 47,
+      "strict_last_total": 83,
+      "runs_with_winner_list_score_ties": 0,
+      "runs_with_empty_closing_lists": 41,
+      "seed_event_with_empty_closing_lists": 12,
+      "seed_event_with_nonzero_winner_list_label": 27
+    },
+    {
+      "k": 8,
+      "documents": 64,
+      "dimension": 73,
+      "t": 1.5625e-05,
+      "winner_id": 0,
+      "batch_size": 64,
+      "alpha0": 1.0,
+      "seed_event": 40,
+      "seed_event_and_strict_last": 40,
+      "strict_last_outside_event": 12,
+      "strict_last_total": 52,
+      "runs_with_winner_list_score_ties": 0,
+      "runs_with_empty_closing_lists": 95,
+      "seed_event_with_empty_closing_lists": 38,
+      "seed_event_with_nonzero_winner_list_label": 33
+    },
+    {
+      "k": 16,
+      "documents": 256,
+      "dimension": 273,
+      "t": 3.90625e-06,
+      "winner_id": 0,
+      "batch_size": 256,
+      "alpha0": 1.0,
+      "seed_event": 36,
+      "seed_event_and_strict_last": 36,
+      "strict_last_outside_event": 1,
+      "strict_last_total": 37,
+      "runs_with_winner_list_score_ties": 0,
+      "runs_with_empty_closing_lists": 100,
+      "seed_event_with_empty_closing_lists": 36,
+      "seed_event_with_nonzero_winner_list_label": 35
+    }
+  ]
+}

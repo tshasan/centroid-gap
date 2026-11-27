@@ -1,0 +1,273 @@
+{
+  "workload": "t2i",
+  "split": "test",
+  "lead_threshold": 0.09,
+  "tested_queries": 5000,
+  "eligible_queries": 5000,
+  "qualifying_queries": 5,
+  "excluded_queries": {
+    "zero_norm": 0,
+    "nonfinite": 0,
+    "top_score_tie": 0
+  },
+  "public_exclusions_before_split": {
+    "overlap": 0,
+    "duplicate": 0
+  },
+  "public_permutation_seed": 2026,
+  "input_npy_sha256": {
+    "base": "b74fc6f1824a66ee16bb0e7f4b91e9af48cadb0dee0f3a819dec0b97d33db9be",
+    "test": "6c363be34b8b026363de1018f98d76f3135443b89db6afb208368967429effee"
+  },
+  "base_prefix_rows": 1000000,
+  "indexed_documents": 1000000,
+  "excluded_document_rows": {
+    "zero_norm": [],
+    "nonfinite": []
+  },
+  "dimension": 200,
+  "training": {
+    "metric": "inner_product",
+    "spherical": true,
+    "lists": 1000,
+    "niter": 20,
+    "nredo": 2,
+    "seed": 2026,
+    "max_points_per_centroid": 256,
+    "training_rows": 256000
+  },
+  "list_size_min_max": [
+    321,
+    3431
+  ],
+  "source_owner_sha256_le_i4": "b441af6445527c1d0e5ae8f5cfed59cd69702e8c3fa9f918c5c8157a9b64e1ff",
+  "normalized_mean_sha256_le_f8": "18bcfaa5a752ec31e29e618d6aeb91740156cb24f538fad485ba45a22b416ee9",
+  "document_ties": "Equal float64 top scores use ascending source document ID. Tied winners have zero lead and are excluded from eligible counts.",
+  "routing_ties": "Equal float64 scores use ascending list ID. Routing ties remain eligible.",
+  "queries_with_owner_routing_tie": 0,
+  "scan_verified_queries_per_budget": 5000,
+  "interval": "Pointwise two-sided 95% Wilson score interval for misses among qualifying queries.",
+  "python": "3.12.16",
+  "numpy": "2.5.4",
+  "faiss": "1.12.0",
+  "faiss_threads": 4,
+  "probes": [
+    {
+      "p": 1,
+      "eligible_queries": 5000,
+      "qualifying_queries": 5,
+      "misses": 4,
+      "conditional_miss_rate": 0.8,
+      "conditional_wilson_95": [
+        0.3755346297625254,
+        0.9637758913675699
+      ],
+      "joint_fraction_of_eligible": 0.0008,
+      "work": {
+        "eligible": {
+          "queries": 5000,
+          "documents_scanned": 4993949,
+          "total_scores": 9993949,
+          "mean_documents_scanned": 998.7898,
+          "mean_total_scores": 1998.7898
+        },
+        "qualifying": {
+          "queries": 5,
+          "documents_scanned": 4200,
+          "total_scores": 9200,
+          "mean_documents_scanned": 840.0,
+          "mean_total_scores": 1840.0
+        }
+      },
+      "routing_boundary_ties": 0,
+      "scan_winner_disagreements": 0,
+      "scan_count_disagreements": 0
+    },
+    {
+      "p": 2,
+      "eligible_queries": 5000,
+      "qualifying_queries": 5,
+      "misses": 3,
+      "conditional_miss_rate": 0.6,
+      "conditional_wilson_95": [
+        0.23072428127601302,
+        0.8823792257673521
+      ],
+      "joint_fraction_of_eligible": 0.0006,
+      "work": {
+        "eligible": {
+          "queries": 5000,
+          "documents_scanned": 9908565,
+          "total_scores": 14908565,
+          "mean_documents_scanned": 1981.713,
+          "mean_total_scores": 2981.713
+        },
+        "qualifying": {
+          "queries": 5,
+          "documents_scanned": 8625,
+          "total_scores": 13625,
+          "mean_documents_scanned": 1725.0,
+          "mean_total_scores": 2725.0
+        }
+      },
+      "routing_boundary_ties": 0,
+      "scan_winner_disagreements": 0,
+      "scan_count_disagreements": 0
+    },
+    {
+      "p": 4,
+      "eligible_queries": 5000,
+      "qualifying_queries": 5,
+      "misses": 2,
+      "conditional_miss_rate": 0.4,
+      "conditional_wilson_95": [
+        0.11762077423264798,
+        0.769275718723987
+      ],
+      "joint_fraction_of_eligible": 0.0004,
+      "work": {
+        "eligible": {
+          "queries": 5000,
+          "documents_scanned": 19745691,
+          "total_scores": 24745691,
+          "mean_documents_scanned": 3949.1382,
+          "mean_total_scores": 4949.1382
+        },
+        "qualifying": {
+          "queries": 5,
+          "documents_scanned": 18814,
+          "total_scores": 23814,
+          "mean_documents_scanned": 3762.8,
+          "mean_total_scores": 4762.8
+        }
+      },
+      "routing_boundary_ties": 0,
+      "scan_winner_disagreements": 0,
+      "scan_count_disagreements": 0
+    },
+    {
+      "p": 8,
+      "eligible_queries": 5000,
+      "qualifying_queries": 5,
+      "misses": 1,
+      "conditional_miss_rate": 0.2,
+      "conditional_wilson_95": [
+        0.03622410863243018,
+        0.6244653702374746
+      ],
+      "joint_fraction_of_eligible": 0.0002,
+      "work": {
+        "eligible": {
+          "queries": 5000,
+          "documents_scanned": 39479544,
+          "total_scores": 44479544,
+          "mean_documents_scanned": 7895.9088,
+          "mean_total_scores": 8895.9088
+        },
+        "qualifying": {
+          "queries": 5,
+          "documents_scanned": 36858,
+          "total_scores": 41858,
+          "mean_documents_scanned": 7371.6,
+          "mean_total_scores": 8371.6
+        }
+      },
+      "routing_boundary_ties": 0,
+      "scan_winner_disagreements": 0,
+      "scan_count_disagreements": 0
+    },
+    {
+      "p": 16,
+      "eligible_queries": 5000,
+      "qualifying_queries": 5,
+      "misses": 0,
+      "conditional_miss_rate": 0.0,
+      "conditional_wilson_95": [
+        0.0,
+        0.43448246478317465
+      ],
+      "joint_fraction_of_eligible": 0.0,
+      "work": {
+        "eligible": {
+          "queries": 5000,
+          "documents_scanned": 78903510,
+          "total_scores": 83903510,
+          "mean_documents_scanned": 15780.702,
+          "mean_total_scores": 16780.702
+        },
+        "qualifying": {
+          "queries": 5,
+          "documents_scanned": 72422,
+          "total_scores": 77422,
+          "mean_documents_scanned": 14484.4,
+          "mean_total_scores": 15484.4
+        }
+      },
+      "routing_boundary_ties": 0,
+      "scan_winner_disagreements": 0,
+      "scan_count_disagreements": 0
+    },
+    {
+      "p": 32,
+      "eligible_queries": 5000,
+      "qualifying_queries": 5,
+      "misses": 0,
+      "conditional_miss_rate": 0.0,
+      "conditional_wilson_95": [
+        0.0,
+        0.43448246478317465
+      ],
+      "joint_fraction_of_eligible": 0.0,
+      "work": {
+        "eligible": {
+          "queries": 5000,
+          "documents_scanned": 157158910,
+          "total_scores": 162158910,
+          "mean_documents_scanned": 31431.782,
+          "mean_total_scores": 32431.782
+        },
+        "qualifying": {
+          "queries": 5,
+          "documents_scanned": 145990,
+          "total_scores": 150990,
+          "mean_documents_scanned": 29198.0,
+          "mean_total_scores": 30198.0
+        }
+      },
+      "routing_boundary_ties": 0,
+      "scan_winner_disagreements": 0,
+      "scan_count_disagreements": 0
+    },
+    {
+      "p": 64,
+      "eligible_queries": 5000,
+      "qualifying_queries": 5,
+      "misses": 0,
+      "conditional_miss_rate": 0.0,
+      "conditional_wilson_95": [
+        0.0,
+        0.43448246478317465
+      ],
+      "joint_fraction_of_eligible": 0.0,
+      "work": {
+        "eligible": {
+          "queries": 5000,
+          "documents_scanned": 312798500,
+          "total_scores": 317798500,
+          "mean_documents_scanned": 62559.7,
+          "mean_total_scores": 63559.7
+        },
+        "qualifying": {
+          "queries": 5,
+          "documents_scanned": 304940,
+          "total_scores": 309940,
+          "mean_documents_scanned": 60988.0,
+          "mean_total_scores": 61988.0
+        }
+      },
+      "routing_boundary_ties": 0,
+      "scan_winner_disagreements": 0,
+      "scan_count_disagreements": 0
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it as below. It has not been peer reviewed."
+title: "How Much Can Centroid Routing Cost in IVF Search? Machine-Checked Worst Cases and Measured Headroom"
+authors:
+  - family-names: Hasan
+    given-names: Taimur
+type: software
+version: 1.0.0
+license: Apache-2.0
+repository-code: "https://github.com/tshasan/centroid-gap"
+date-released: 2026-11-27
+keywords:
+  - vector search
+  - inverted file index
+  - k-means
+  - Lean 4
+  - formal verification
+preferred-citation:
+  type: article
+  title: "How Much Can Centroid Routing Cost in IVF Search? Machine-Checked Worst Cases and Measured Headroom"
+  authors:
+    - family-names: Hasan
+      given-names: Taimur
+  year: 2026
+  notes: "Preprint. Not peer reviewed."

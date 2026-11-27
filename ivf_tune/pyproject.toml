@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ivf-tune"
+version = "0.1.0"
+description = "Make an existing Faiss IVF index reach the same recall with less work, by learning one bias per list."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = ["numpy>=1.22"]
+
+[project.optional-dependencies]
+cpu = ["faiss-cpu>=1.7.4"]
+
+[tool.setuptools]
+packages = ["ivf_tune"]

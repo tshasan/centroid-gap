@@ -1,0 +1,18 @@
+/.lake/
+/.claude/
+/.pi/
+__pycache__/
+*.egg-info/
+.venv/
+.pytest_cache/
+build/
+dist/
+# LaTeX build intermediates
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.log
+paper/*.out
+paper/*.fls
+paper/*.fdb_latexmk
+.DS_Store
